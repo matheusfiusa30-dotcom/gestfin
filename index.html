@@ -197,6 +197,33 @@ table td { font-size: 0.85rem; }
 .ai-input-row { display: flex; gap: 8px; }
 .ai-input-row input { flex: 1; }
 
+/* CALENDAR */
+.calendar { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.calendar-header h3 { font-size: 1.1rem; }
+.calendar-nav { display: flex; gap: 8px; }
+.calendar-nav button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; }
+.calendar-nav button:hover { background: var(--accent); }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calendar-day-header { text-align: center; font-size: 0.7rem; color: var(--text-muted); padding: 8px 0; font-weight: 600; text-transform: uppercase; }
+.calendar-day { position: relative; text-align: center; padding: 10px 4px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); transition: all var(--transition); min-height: 44px; }
+.calendar-day:hover { background: var(--bg-hover); }
+.calendar-day.today { background: rgba(108,92,231,0.15); color: var(--accent-light); font-weight: 700; }
+.calendar-day.selected { background: var(--accent); color: #fff; }
+.calendar-day.other-month { color: var(--text-muted); opacity: 0.3; }
+.calendar-day .dots { display: flex; justify-content: center; gap: 3px; margin-top: 4px; }
+.calendar-day .dot { width: 5px; height: 5px; border-radius: 50%; }
+.dot-danger { background: var(--danger); }
+.dot-warning { background: var(--warning); }
+.dot-success { background: var(--success); }
+.dot-info { background: var(--info); }
+.calendar-events { margin-top: 12px; }
+.calendar-event { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.8rem; border-left: 3px solid var(--border); }
+.calendar-event.vencida { border-left-color: var(--danger); }
+.calendar-event.hoje { border-left-color: var(--warning); }
+.calendar-event.futura { border-left-color: var(--info); }
+.calendar-event.cheque { border-left-color: var(--accent); }
+
 /* PRINT */
 .recibo-print { display: none; }
 @media print {
@@ -309,6 +336,23 @@ table td { font-size: 0.85rem; }
       <option value="year">Este ano</option>
     </select>
   </div>
+
+  <!-- CALENDAR -->
+  <div class="calendar" id="dashboard-calendar">
+    <div class="calendar-header">
+      <div class="calendar-nav">
+        <button onclick="calendarPrev()">&larr;</button>
+      </div>
+      <h3 id="calendar-title">Abril 2026</h3>
+      <div class="calendar-nav">
+        <button onclick="calendarNext()">&rarr;</button>
+        <button onclick="calendarToday()">Hoje</button>
+      </div>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+    <div class="calendar-events" id="calendar-events"></div>
+  </div>
+
   <div class="stats-grid" id="dash-stats"></div>
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;" class="dash-grid-lower">
     <div class="card"><div class="card-header"><h3>Recebimentos por Mês</h3></div><div class="chart-container"><canvas id="chart-recebimentos"></canvas></div></div>
@@ -356,7 +400,7 @@ table td { font-size: 0.85rem; }
   <div class="stats-grid" id="emp-detalhe-stats"></div>
   <div id="ai-risk-result" style="display:none;" class="card"></div>
   <div class="card">
-    <div class="card-header"><h3>Parcelas</h3><span class="badge badge-info" id="emp-detalhe-sistema"></span></div>
+    <div class="card-header"><h3>Parcelas</h3><span class="badge badge-accent" id="emp-detalhe-sistema">Juros Compostos</span><span class="badge badge-info" id="emp-detalhe-frequencia" style="margin-left:8px;"></span></div>
     <div class="table-wrapper">
       <table><thead><tr><th>#</th><th>Vencimento</th><th>Principal</th><th>Juros</th><th>Total</th><th>Mora</th><th>Pago</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody id="parcelas-table"></tbody></table>
@@ -559,10 +603,6 @@ table td { font-size: 0.85rem; }
     <button class="btn btn-primary" onclick="simular()" style="margin-top:8px;">Simular</button>
   </div>
   <div id="sim-resultados" style="display:none;">
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showSimTab('price')">Tabela Price</button>
-      <button class="tab-btn" onclick="showSimTab('sac')">SAC</button>
-    </div>
     <div class="stats-grid" id="sim-resumo"></div>
     <div class="card"><div class="table-wrapper"><table><thead><tr><th>#</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr></thead><tbody id="sim-tabela"></tbody></table></div></div>
   </div>
@@ -645,14 +685,20 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Cliente *</label><select class="form-control" id="emp-pessoa"></select></div>
         <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="emp-valor" step="0.01"></div>
       </div>
-      <div class="form-row-3">
+      <div class="form-row">
         <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="emp-taxa" step="0.01"></div>
-        <div class="form-group"><label>Sistema *</label><select class="form-control" id="emp-sistema"><option value="price">Tabela Price</option><option value="sac">SAC</option></select></div>
         <div class="form-group"><label>Nº Parcelas *</label><input class="form-control" type="number" id="emp-nparcelas" min="1" max="360"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="emp-inicio"></div>
-        <div class="form-group"><label>Dia Vencimento (1-28)</label><input class="form-control" type="number" id="emp-diavenc" min="1" max="28" value="10"></div>
+        <div class="form-group">
+          <label>Frequência de Vencimento *</label>
+          <select class="form-control" id="emp-frequencia">
+            <option value="mensal">Mensal (30 dias)</option>
+            <option value="quinzenal">Quinzenal (15 dias)</option>
+            <option value="semanal">Semanal (7 dias)</option>
+          </select>
+        </div>
       </div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="emp-obs"></textarea></div>
       <button class="btn btn-ghost" onclick="previewParcelas()" style="margin-top:4px;">Pré-visualizar</button>
@@ -701,8 +747,15 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Novas Parcelas</label><input class="form-control" type="number" id="reneg-parcelas" min="1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Sistema</label><select class="form-control" id="reneg-sistema"><option value="price">Tabela Price</option><option value="sac">SAC</option></select></div>
         <div class="form-group"><label>Data Início</label><input class="form-control" type="date" id="reneg-inicio"></div>
+        <div class="form-group">
+          <label>Frequência de Vencimento *</label>
+          <select class="form-control" id="reneg-frequencia">
+            <option value="mensal">Mensal (30 dias)</option>
+            <option value="quinzenal">Quinzenal (15 dias)</option>
+            <option value="semanal">Semanal (7 dias)</option>
+          </select>
+        </div>
       </div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="reneg-obs"></textarea></div>
     </div>
@@ -805,7 +858,7 @@ function isConnected() { return supabaseClient !== null; }
 // Column name mapping (JS camelCase -> SQL snake_case)
 const COL_MAP = {
   clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', criadoEm:'criado_em' },
-  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', diaVencimento:'dia_vencimento', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
+  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
   pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
   cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
@@ -961,12 +1014,26 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ================================================
 // CÁLCULOS FINANCEIROS
 // ================================================
-function calcPrice(v,t,n) { const i=t/100, pmt=v*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1), ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i,a=pmt-j;s-=a;ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});} return ps; }
-function calcSAC(v,t,n) { const i=t/100,ac=v/n,ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i;s-=ac;ps.push({numero:x,amortizacao:ac,juros:j,parcela:ac+j,saldo:Math.max(s,0)});} return ps; }
-function calcParcelas(v,t,s,n) { return s==='sac'?calcSAC(v,t,n):calcPrice(v,t,n); }
+function calcJurosCompostos(v,t,n) { const i=t/100, pmt=v*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1), ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i,a=pmt-j;s-=a;ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});} return ps; }
+function calcParcelas(v,t,n) { return calcJurosCompostos(v,t,n); }
 async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
-function gerarVencimentos(di,dv,n) { const ini=new Date(di),vs=[]; let m=ini.getMonth()+1,a=ini.getFullYear(); for(let i=0;i<n;i++){m++;if(m>12){m=1;a++;}const d=Math.min(dv,new Date(a,m,0).getDate());vs.push(`${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);} return vs; }
+function gerarVencimentos(dataInicio, frequencia, nParcelas) {
+  const ini = new Date(dataInicio);
+  const vencimentos = [];
+  for (let i = 1; i <= nParcelas; i++) {
+    const d = new Date(ini);
+    if (frequencia === 'semanal') {
+      d.setDate(d.getDate() + (7 * i));
+    } else if (frequencia === 'quinzenal') {
+      d.setDate(d.getDate() + (15 * i));
+    } else { // mensal
+      d.setMonth(d.getMonth() + i);
+    }
+    vencimentos.push(d.toISOString().split('T')[0]);
+  }
+  return vencimentos;
+}
 
 
 // ================================================
@@ -1041,28 +1108,28 @@ async function renderCobradores() {
 async function openContratoModal() {
   const cl=await dbSelect('clientes'); if(!cl.length){toast('Cadastre um cliente primeiro','warning');return;}
   ['emp-id','emp-valor','emp-taxa','emp-nparcelas','emp-obs'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('emp-sistema').value='price';document.getElementById('emp-inicio').value=today();document.getElementById('emp-diavenc').value='10';
+  document.getElementById('emp-inicio').value=today();document.getElementById('emp-frequencia').value='mensal';
   document.getElementById('emp-preview').style.display='none';document.getElementById('modal-emp-titulo').textContent='Novo Contrato';
   document.getElementById('emp-pessoa').innerHTML='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
   openModal('modal-contrato');
 }
 function previewParcelas() {
-  const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),s=document.getElementById('emp-sistema').value,n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,dv=parseInt(document.getElementById('emp-diavenc').value);
+  const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value;
   if(!v||!t||!n||!ini){toast('Preencha os campos','error');return;}
-  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,dv,n);
+  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
   document.getElementById('emp-preview-table').innerHTML=c.map((p,i)=>`<tr><td>${p.numero}</td><td>${fmtData(vs[i])}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');
   document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
   document.getElementById('emp-preview').style.display='block';
 }
 async function salvarContrato() {
-  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),s=document.getElementById('emp-sistema').value,n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,dv=parseInt(document.getElementById('emp-diavenc').value);
-  if(!pid||!v||!t||!n||!ini||!dv){toast('Preencha todos os campos','error');return;}
+  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value;
+  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
   const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:s,numParcelas:n,dataInicio:ini,diaVencimento:dv,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
   const actualEid = insertedEmp.id || eid;
 
-  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,dv,n);
+  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-contrato');toast('Contrato criado!');renderContratos();
@@ -1107,7 +1174,9 @@ async function verContrato(eid) {
   const pgs=(await dbSelect('pagamentos')).filter(x=>x.emprestimoId===eid);
   const h=today(),cfg=await getConfig();
   document.getElementById('emp-detalhe-titulo').textContent=`Contrato - ${p?p.nome:'?'}`;
-  document.getElementById('emp-detalhe-sistema').textContent=e.sistema.toUpperCase();
+  document.getElementById('emp-detalhe-sistema').textContent='Juros Compostos';
+  const freqLabels={mensal:'Mensal',quinzenal:'Quinzenal',semanal:'Semanal'};
+  document.getElementById('emp-detalhe-frequencia').textContent=freqLabels[e.frequencia||'mensal']||'Mensal';
   document.getElementById('btn-renegociar').style.display=e.status==='quitado'?'none':'';
   document.getElementById('ai-risk-result').style.display='none';
   const tp=ps.reduce((s,x)=>s+x.valorTotal,0),tpg=ps.reduce((s,x)=>s+(x.valorPago||0),0),sd=tp-tpg;
@@ -1167,19 +1236,19 @@ async function openRenegociarModal() {
   const mc=ps.filter(x=>x.status==='pendente'&&x.dataVencimento<h).reduce((s,x)=>s+calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg),0);
   document.getElementById('reneg-emp-id').value=currentEmpId;document.getElementById('reneg-saldo').textContent=moeda(sd+mc);
   document.getElementById('reneg-valor').value=(sd+mc).toFixed(2);document.getElementById('reneg-taxa').value=e.taxaJuros;
-  document.getElementById('reneg-parcelas').value=e.numParcelas;document.getElementById('reneg-sistema').value=e.sistema;
+  document.getElementById('reneg-parcelas').value=e.numParcelas;document.getElementById('reneg-frequencia').value=e.frequencia||'mensal';
   document.getElementById('reneg-inicio').value=h;document.getElementById('reneg-obs').value='';openModal('modal-renegociar');
 }
 async function salvarRenegociacao() {
-  const oid=document.getElementById('reneg-emp-id').value,v=parseFloat(document.getElementById('reneg-valor').value),t=parseFloat(document.getElementById('reneg-taxa').value),n=parseInt(document.getElementById('reneg-parcelas').value),s=document.getElementById('reneg-sistema').value,ini=document.getElementById('reneg-inicio').value;
+  const oid=document.getElementById('reneg-emp-id').value,v=parseFloat(document.getElementById('reneg-valor').value),t=parseFloat(document.getElementById('reneg-taxa').value),n=parseInt(document.getElementById('reneg-parcelas').value),freq=document.getElementById('reneg-frequencia').value,ini=document.getElementById('reneg-inicio').value;
   if(!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
   const es=await dbSelect('emprestimos'),oe=es.find(x=>x.id===oid);if(!oe)return;
   await dbUpdate('emprestimos',oid,{status:'renegociado'});
   const nid=genId();
-  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:s,numParcelas:n,dataInicio:ini,diaVencimento:oe.diaVencimento,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
+  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
   const insertedEmp=await dbInsert('emprestimos',newEmp);
   const actualNid=insertedEmp.id||nid;
-  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,oe.diaVencimento,n);
+  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualNid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-renegociar');toast('Renegociado!');verContrato(actualNid);
@@ -1293,6 +1362,7 @@ async function renderCaixa() {
 // ================================================
 async function renderDashboard() {
   await loadMoedaConfig();
+  await renderCalendar();
   const es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),pgs=await dbSelect('pagamentos'),cl=await dbSelect('clientes'),ds=await dbSelect('despesas'),h=today(),per=document.getElementById('dash-periodo')?.value||'all';
   let fd=null;const now=new Date();
   if(per==='month')fd=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
@@ -1336,17 +1406,16 @@ function renderChart(pgs) {
 // ================================================
 // SIMULADOR
 // ================================================
-let simData={},simTab='price';
-function simular(){const v=parseFloat(document.getElementById('sim-valor').value),t=parseFloat(document.getElementById('sim-taxa').value),n=parseInt(document.getElementById('sim-parcelas').value);if(!v||!t||!n){toast('Preencha os campos','error');return;}simData={price:calcPrice(v,t,n),sac:calcSAC(v,t,n)};simTab='price';document.getElementById('sim-resultados').style.display='block';renderSimTab();}
-function showSimTab(t){simTab=t;document.querySelectorAll('#page-simulador .tab-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderSimTab();}
-function renderSimTab(){const d=simData[simTab];if(!d)return;const tj=d.reduce((s,p)=>s+p.juros,0),tg=d.reduce((s,p)=>s+p.parcela,0);document.getElementById('sim-resumo').innerHTML=`<div class="stat-card accent"><div class="label">Total Juros</div><div class="value">${moeda(tj)}</div></div><div class="stat-card"><div class="label">Total Geral</div><div class="value">${moeda(tg)}</div></div><div class="stat-card"><div class="label">1ª Parcela</div><div class="value">${moeda(d[0].parcela)}</div></div><div class="stat-card"><div class="label">Última</div><div class="value">${moeda(d[d.length-1].parcela)}</div></div>`;document.getElementById('sim-tabela').innerHTML=d.map(p=>`<tr><td>${p.numero}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');}
+let simData=null;
+function simular(){const v=parseFloat(document.getElementById('sim-valor').value),t=parseFloat(document.getElementById('sim-taxa').value),n=parseInt(document.getElementById('sim-parcelas').value);if(!v||!t||!n){toast('Preencha os campos','error');return;}simData=calcJurosCompostos(v,t,n);document.getElementById('sim-resultados').style.display='block';renderSimTab();}
+function renderSimTab(){const d=simData;if(!d)return;const tj=d.reduce((s,p)=>s+p.juros,0),tg=d.reduce((s,p)=>s+p.parcela,0);document.getElementById('sim-resumo').innerHTML=`<div class="stat-card accent"><div class="label">Total Juros</div><div class="value">${moeda(tj)}</div></div><div class="stat-card"><div class="label">Total Geral</div><div class="value">${moeda(tg)}</div></div><div class="stat-card"><div class="label">1ª Parcela</div><div class="value">${moeda(d[0].parcela)}</div></div><div class="stat-card"><div class="label">Última</div><div class="value">${moeda(d[d.length-1].parcela)}</div></div>`;document.getElementById('sim-tabela').innerHTML=d.map(p=>`<tr><td>${p.numero}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');}
 
 // ================================================
 // RELATÓRIOS
 // ================================================
 async function renderRelatorios(){const cl=await dbSelect('clientes');document.getElementById('rel-pessoa').innerHTML='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');await renderRelExtrato();await renderRelFluxo();await renderRelRanking();await renderRelAtrasados();await renderRelCobradores();}
 function showRelTab(t){['extrato','fluxo','ranking','atrasados','cobradores'].forEach(x=>{document.getElementById('rel-'+x).style.display=x===t?'':'none';});document.querySelectorAll('#page-relatorios .tab-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
-async function renderRelExtrato(){const pid=document.getElementById('rel-pessoa').value,ct=document.getElementById('rel-extrato-content');if(!pid){ct.innerHTML='<p style="color:var(--text-muted);">Selecione um cliente</p>';return;}const cl=await dbSelect('clientes'),p=cl.find(x=>x.id===pid),es=(await dbSelect('emprestimos')).filter(e=>e.pessoaId===pid),pgs=await dbSelect('pagamentos');let h=`<h3 style="margin-bottom:12px;">Extrato: ${esc(p.nome)}</h3>`;if(!es.length){ct.innerHTML=h+'<p style="color:var(--text-muted);">Nenhum contrato</p>';return;}es.forEach(e=>{const pg=pgs.filter(x=>x.emprestimoId===e.id),tp=pg.reduce((s,x)=>s+x.valor,0);h+=`<div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><strong>${moeda(e.valor)} - ${e.sistema.toUpperCase()} ${fmtPct(e.taxaJuros)}/mês</strong><span class="badge ${e.status==='quitado'?'badge-success':e.status==='atrasado'?'badge-danger':'badge-accent'}">${e.status}</span></div><p style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;">Início: ${fmtData(e.dataInicio)} | Parcelas: ${e.numParcelas} | Pago: ${moeda(tp)}</p></div>`;});ct.innerHTML=h;}
+async function renderRelExtrato(){const pid=document.getElementById('rel-pessoa').value,ct=document.getElementById('rel-extrato-content');if(!pid){ct.innerHTML='<p style="color:var(--text-muted);">Selecione um cliente</p>';return;}const cl=await dbSelect('clientes'),p=cl.find(x=>x.id===pid),es=(await dbSelect('emprestimos')).filter(e=>e.pessoaId===pid),pgs=await dbSelect('pagamentos');let h=`<h3 style="margin-bottom:12px;">Extrato: ${esc(p.nome)}</h3>`;if(!es.length){ct.innerHTML=h+'<p style="color:var(--text-muted);">Nenhum contrato</p>';return;}es.forEach(e=>{const pg=pgs.filter(x=>x.emprestimoId===e.id),tp=pg.reduce((s,x)=>s+x.valor,0);h+=`<div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><strong>${moeda(e.valor)} - Juros Compostos ${fmtPct(e.taxaJuros)}/mês</strong><span class="badge ${e.status==='quitado'?'badge-success':e.status==='atrasado'?'badge-danger':'badge-accent'}">${e.status}</span></div><p style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;">Início: ${fmtData(e.dataInicio)} | Parcelas: ${e.numParcelas} | Pago: ${moeda(tp)}</p></div>`;});ct.innerHTML=h;}
 async function renderRelFluxo(){const ps=await dbSelect('parcelas'),pgs=await dbSelect('pagamentos'),ms=[];const now=new Date();for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1),k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,l=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});ms.push({l,p:ps.filter(x=>x.dataVencimento.startsWith(k)&&x.status==='pendente').reduce((s,x)=>s+x.valorTotal,0),r:pgs.filter(x=>x.data.startsWith(k)).reduce((s,x)=>s+x.valor,0)});}document.getElementById('rel-fluxo-content').innerHTML=`<table><thead><tr><th>Mês</th><th>Previsto</th><th>Recebido</th><th>Dif.</th></tr></thead><tbody>${ms.map(m=>`<tr><td>${esc(m.l)}</td><td>${moeda(m.p)}</td><td>${moeda(m.r)}</td><td style="color:${m.r>=m.p?'var(--success)':'var(--danger)'}">${moeda(m.r-m.p)}</td></tr>`).join('')}</tbody></table>`;}
 async function renderRelRanking(){const cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),rk=cl.map(c=>{const me=es.filter(e=>e.pessoaId===c.id&&e.status!=='quitado'&&e.status!=='renegociado'),sd=me.reduce((s,e)=>s+ps.filter(x=>x.emprestimoId===e.id&&x.status==='pendente').reduce((ss,x)=>ss+x.valorTotal-(x.valorPago||0),0),0);return{nome:c.nome,sd,n:me.length};}).filter(r=>r.sd>0).sort((a,b)=>b.sd-a.sd);document.getElementById('rel-ranking-content').innerHTML=rk.length?`<table><thead><tr><th>#</th><th>Nome</th><th>Contratos</th><th>Saldo</th></tr></thead><tbody>${rk.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.nome)}</td><td>${r.n}</td><td><strong>${moeda(r.sd)}</strong></td></tr>`).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum devedor</p>';}
 async function renderRelAtrasados(){const es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),cl=await dbSelect('clientes'),h=today(),at=[];es.forEach(e=>{const pp=ps.filter(p=>p.emprestimoId===e.id&&p.status==='pendente'&&p.dataVencimento<h);if(pp.length){const c=cl.find(x=>x.id===e.pessoaId);at.push({nome:c?.nome||'-',n:pp.length,t:pp.reduce((s,p)=>s+p.valorTotal,0),d:Math.max(...pp.map(p=>Math.floor((new Date()-new Date(p.dataVencimento))/864e5))),eid:e.id});}});document.getElementById('rel-atrasados-content').innerHTML=at.length?`<table><thead><tr><th>Cliente</th><th>Parc. Atrasadas</th><th>Total</th><th>Maior Atraso</th><th>Ações</th></tr></thead><tbody>${at.map(a=>`<tr><td>${esc(a.nome)}</td><td>${a.n}</td><td>${moeda(a.t)}</td><td><span class="badge badge-danger">${a.d}d</span></td><td><button class="btn btn-sm btn-ghost" onclick="verContrato('${a.eid}')">Ver</button></td></tr>`).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atrasada</p>';}
@@ -1428,7 +1497,7 @@ async function buildPortfolioContext() {
     const atrasadas=parcs.filter(p=>p.status==='pendente'&&p.dataVencimento<h);
     const totalPago=parcs.reduce((s,p)=>s+(p.valorPago||0),0);
     const totalPrev=parcs.reduce((s,p)=>s+p.valorTotal,0);
-    ctx += `- Contrato ${(e.id||'').toString().substr(0,6)}: ${c?c.nome:'?'}, R$${e.valor.toFixed(2)}, ${e.taxaJuros}%/mês (${e.sistema}), ${e.numParcelas} parcelas, ${atrasadas.length} atrasada(s), pago ${totalPago.toFixed(2)} de ${totalPrev.toFixed(2)}, status: ${e.status}\n`;
+    ctx += `- Contrato ${(e.id||'').toString().substr(0,6)}: ${c?c.nome:'?'}, R$${e.valor.toFixed(2)}, ${e.taxaJuros}%/mês (Juros Compostos, ${e.frequencia||'mensal'}), ${e.numParcelas} parcelas, ${atrasadas.length} atrasada(s), pago ${totalPago.toFixed(2)} de ${totalPrev.toFixed(2)}, status: ${e.status}\n`;
   });
   return ctx;
 }
@@ -1448,7 +1517,7 @@ async function analisarRiscoContrato() {
 DADOS DO CONTRATO:
 - Cliente: ${c?c.nome:'Desconhecido'}
 - Valor emprestado: R$ ${e.valor.toFixed(2)}
-- Taxa de juros: ${e.taxaJuros}% ao mês (${e.sistema.toUpperCase()})
+- Taxa de juros: ${e.taxaJuros}% ao mês (Juros Compostos)
 - Parcelas: ${e.numParcelas} (${pagas.length} pagas, ${atrasadas.length} atrasadas, ${ps.length-pagas.length-atrasadas.length} pendentes)
 - Total previsto: R$ ${totalPrev.toFixed(2)}
 - Total já pago: R$ ${totalPago.toFixed(2)}
@@ -1516,6 +1585,120 @@ Responda em PT-BR de forma concisa.`;
 }
 
 // ================================================
+// CALENDAR
+// ================================================
+let calYear, calMonth, calSelectedDate = null;
+
+function initCalendar() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+}
+
+function calendarPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calendarNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function calendarToday() { const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth(); calSelectedDate=today(); renderCalendar(); }
+
+async function renderCalendar() {
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('calendar-title').textContent = `${meses[calMonth]} ${calYear}`;
+
+  const parcelas = await dbSelect('parcelas');
+  const cheques = await dbSelect('cheques');
+  const emprestimos = await dbSelect('emprestimos');
+  const clientes = await dbSelect('clientes');
+  const h = today();
+
+  // Build events map: date -> [{type, label, valor}]
+  const events = {};
+  function addEvent(date, type, label, valor) {
+    if(!events[date]) events[date] = [];
+    events[date].push({type, label, valor});
+  }
+
+  parcelas.filter(p => p.status === 'pendente').forEach(p => {
+    const e = emprestimos.find(x => x.id === p.emprestimoId);
+    const c = e ? clientes.find(x => x.id === e.pessoaId) : null;
+    const nome = c ? c.nome : '?';
+    const tipo = p.dataVencimento < h ? 'vencida' : p.dataVencimento === h ? 'hoje' : 'futura';
+    addEvent(p.dataVencimento, tipo, `${nome} - Parcela #${p.numero}`, p.valorTotal);
+  });
+
+  cheques.filter(ch => ch.status === 'pendente').forEach(ch => {
+    const c = clientes.find(x => x.id === ch.clienteId);
+    addEvent(ch.bomPara, 'cheque', `Cheque ${ch.numero} - ${c ? c.nome : '?'}`, ch.valor);
+  });
+
+  // Render grid
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+
+  let html = '<div class="calendar-day-header">Dom</div><div class="calendar-day-header">Seg</div><div class="calendar-day-header">Ter</div><div class="calendar-day-header">Qua</div><div class="calendar-day-header">Qui</div><div class="calendar-day-header">Sex</div><div class="calendar-day-header">Sáb</div>';
+
+  // Previous month days
+  for(let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="calendar-day other-month">${daysInPrev - i}</div>`;
+  }
+
+  // Current month days
+  for(let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === h;
+    const isSelected = dateStr === calSelectedDate;
+    const dayEvents = events[dateStr] || [];
+
+    let dots = '';
+    if(dayEvents.length > 0) {
+      const types = [...new Set(dayEvents.map(e => e.type))];
+      dots = '<div class="dots">' + types.map(t => {
+        const cls = t === 'vencida' ? 'dot-danger' : t === 'hoje' ? 'dot-warning' : t === 'cheque' ? 'dot-info' : 'dot-success';
+        return `<div class="dot ${cls}"></div>`;
+      }).join('') + '</div>';
+    }
+
+    html += `<div class="calendar-day${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalendarDay('${dateStr}')">${d}${dots}</div>`;
+  }
+
+  // Next month days
+  const totalCells = firstDay + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for(let i = 1; i <= remaining; i++) {
+    html += `<div class="calendar-day other-month">${i}</div>`;
+  }
+
+  document.getElementById('calendar-grid').innerHTML = html;
+
+  // Render events for selected date
+  renderCalendarEvents(events);
+}
+
+function selectCalendarDay(dateStr) {
+  calSelectedDate = calSelectedDate === dateStr ? null : dateStr;
+  renderCalendar();
+}
+
+async function renderCalendarEvents(events) {
+  const evDiv = document.getElementById('calendar-events');
+  if(!calSelectedDate || !events[calSelectedDate]) {
+    // Show today's events or summary
+    const h = today();
+    const todayEvents = events[h] || [];
+    if(todayEvents.length > 0) {
+      evDiv.innerHTML = `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">Hoje (${fmtData(h)}) - ${todayEvents.length} evento(s):</div>` +
+        todayEvents.map(e => `<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+    } else {
+      evDiv.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.85rem;">Selecione um dia para ver os eventos</div>';
+    }
+    return;
+  }
+
+  const dayEvents = events[calSelectedDate];
+  evDiv.innerHTML = `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">${fmtData(calSelectedDate)} - ${dayEvents.length} evento(s):</div>` +
+    dayEvents.map(e => `<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+}
+
+// ================================================
 // INIT
 // ================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1530,6 +1713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   initSupabase();
   await loadMoedaConfig();
+  initCalendar();
   await renderDashboard();
 });
 </script>
