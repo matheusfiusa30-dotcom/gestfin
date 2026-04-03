@@ -267,10 +267,7 @@ table td { font-size: 0.85rem; }
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
       Clientes
     </a>
-    <a class="nav-item" data-page="gerentes" onclick="navigateTo('gerentes')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Gerentes
-    </a>
+
     <a class="nav-item" data-page="cobradores" onclick="navigateTo('cobradores')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 11l-3 3-3-3"/></svg>
       Cobradores
@@ -293,10 +290,8 @@ table td { font-size: 0.85rem; }
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Configurações
     </a>
-    <a class="nav-item" data-page="backup" onclick="navigateTo('backup')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-      Backup
-    </a>
+
+
   </nav>
   <div class="sidebar-footer">GestFin v2.0 &copy; 2026</div>
 </aside>
@@ -475,20 +470,6 @@ table td { font-size: 0.85rem; }
   </div>
 </section>
 
-<!-- ===== GERENTES ===== -->
-<section class="page" id="page-gerentes">
-  <div class="page-header">
-    <h2>Gerentes</h2>
-    <button class="btn btn-primary" onclick="openGerenteModal()">+ Novo Gerente</button>
-  </div>
-  <div class="card">
-    <div class="table-wrapper">
-      <table><thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Contratos Ativos</th><th>Ações</th></tr></thead>
-      <tbody id="gerentes-table"></tbody></table>
-    </div>
-    <div class="empty-state" id="gerentes-empty" style="display:none;"><h3>Nenhum gerente cadastrado</h3></div>
-  </div>
-</section>
 
 <!-- ===== COBRADORES ===== -->
 <section class="page" id="page-cobradores">
@@ -599,18 +580,6 @@ table td { font-size: 0.85rem; }
     <button class="btn btn-primary" onclick="salvarConfig()">Salvar</button>
   </div>
   <div class="card" style="margin-top:16px;">
-    <div class="card-header"><h3>Conexão Supabase</h3></div>
-    <div class="form-row">
-      <div class="form-group"><label>Supabase URL</label><input class="form-control" id="cfg-supa-url" placeholder="https://xxx.supabase.co"></div>
-      <div class="form-group"><label>Supabase Anon Key</label><input class="form-control" type="password" id="cfg-supa-key" placeholder="eyJ..."></div>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" onclick="salvarSupabaseConfig()">Conectar</button>
-      <button class="btn btn-ghost" onclick="testarSupabase()">Testar Conexão</button>
-      <span id="supa-status" style="display:flex;align-items:center;color:var(--text-muted);font-size:0.85rem;"></span>
-    </div>
-  </div>
-  <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>API de IA (Anthropic Claude)</h3></div>
     <div class="form-group">
       <label>API Key</label>
@@ -639,25 +608,6 @@ table td { font-size: 0.85rem; }
   </div>
 </section>
 
-<!-- ===== BACKUP ===== -->
-<section class="page" id="page-backup">
-  <div class="page-header"><h2>Backup</h2></div>
-  <div class="card">
-    <div class="card-header"><h3>Exportar Dados</h3></div>
-    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Exporta todos os dados do sistema em formato JSON.</p>
-    <button class="btn btn-success" onclick="exportarDados()">Exportar JSON</button>
-  </div>
-  <div class="card" style="margin-top:16px;">
-    <div class="card-header"><h3>Importar Dados</h3></div>
-    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Importa dados de um backup JSON. Os dados atuais serão substituídos.</p>
-    <label class="btn btn-ghost" style="cursor:pointer;">Selecionar Arquivo JSON<input type="file" accept=".json" onchange="importarDados(event)" style="display:none;"></label>
-  </div>
-  <div class="card" style="margin-top:16px;">
-    <div class="card-header"><h3>Limpar Dados</h3></div>
-    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Remove todos os dados permanentemente.</p>
-    <button class="btn btn-danger" onclick="confirmarLimpar()">Limpar Todos os Dados</button>
-  </div>
-</section>
 
 </main>
 
@@ -678,10 +628,7 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Email</label><input class="form-control" type="email" id="cliente-email"></div>
       </div>
       <div class="form-group"><label>Endereço</label><input class="form-control" id="cliente-endereco"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
-        <div class="form-group"><label>Gerente</label><select class="form-control" id="cliente-gerente"><option value="">Nenhum</option></select></div>
-      </div>
+      <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar</button></div>
@@ -809,19 +756,6 @@ table td { font-size: 0.85rem; }
   </div>
 </div>
 
-<!-- Modal Gerente -->
-<div class="modal-overlay" id="modal-gerente">
-  <div class="modal">
-    <div class="modal-header"><h3 id="modal-gerente-titulo">Novo Gerente</h3><button class="btn-icon" onclick="closeModal('modal-gerente')">&times;</button></div>
-    <div class="modal-body">
-      <input type="hidden" id="gerente-id">
-      <div class="form-row"><div class="form-group"><label>Nome *</label><input class="form-control" id="gerente-nome"></div><div class="form-group"><label>Telefone</label><input class="form-control" id="gerente-tel" oninput="maskTel(this)"></div></div>
-      <div class="form-group"><label>Email</label><input class="form-control" id="gerente-email"></div>
-      <div class="form-group"><label>Observações</label><textarea class="form-control" id="gerente-obs"></textarea></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-gerente')">Cancelar</button><button class="btn btn-primary" onclick="salvarGerente()">Salvar</button></div>
-  </div>
-</div>
 
 <!-- Modal Cobrador -->
 <div class="modal-overlay" id="modal-cobrador">
@@ -850,15 +784,15 @@ table td { font-size: 0.85rem; }
 // ================================================
 // DATA LAYER - SUPABASE + LOCALSTORAGE FALLBACK
 // ================================================
-const DB_KEYS = ['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores','config','iaconfig'];
+const DB_KEYS = ['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','cobradores','config','iaconfig'];
 
 // Supabase client
 let supabaseClient = null;
 let DB_CACHE = {}; // in-memory cache
 
 function initSupabase() {
-  const url = localStorage.getItem('gf_supabase_url') || '';
-  const key = localStorage.getItem('gf_supabase_key') || '';
+  const url = 'https://skbjymjwxjkzbvitlgpw.supabase.co';
+  const key = 'sb_publishable_XAkko4MxjhEButK8xV4KUg_Yd24YBRP';
   if (url && key) {
     supabaseClient = window.supabase.createClient(url, key);
     return true;
@@ -870,13 +804,12 @@ function isConnected() { return supabaseClient !== null; }
 
 // Column name mapping (JS camelCase -> SQL snake_case)
 const COL_MAP = {
-  clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', gerenteId:'gerente_id', criadoEm:'criado_em' },
+  clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', criadoEm:'criado_em' },
   emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', diaVencimento:'dia_vencimento', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
   pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
   cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
   despesas: { criadoEm:'criado_em' },
-  gerentes: { criadoEm:'criado_em' },
   cobradores: { criadoEm:'criado_em' }
 };
 
@@ -1017,7 +950,7 @@ function navigateTo(p) {
   const el=document.getElementById('page-'+p); if(el) el.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${p}"]`); if(nav) nav.classList.add('active');
   document.getElementById('sidebar').classList.remove('open');
-  const renders = {dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,gerentes:renderGerentes,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco,backup:()=>{}};
+  const renders = {dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco};
   if(renders[p]) renders[p]();
 }
 function navigateToPage(p) { document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); const el=document.getElementById('page-'+p); if(el) el.classList.add('active'); }
@@ -1035,45 +968,22 @@ async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadr
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function gerarVencimentos(di,dv,n) { const ini=new Date(di),vs=[]; let m=ini.getMonth()+1,a=ini.getFullYear(); for(let i=0;i<n;i++){m++;if(m>12){m=1;a++;}const d=Math.min(dv,new Date(a,m,0).getDate());vs.push(`${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);} return vs; }
 
-// ================================================
-// SUPABASE CONNECTION
-// ================================================
-function salvarSupabaseConfig() {
-  const url = document.getElementById('cfg-supa-url').value.trim();
-  const key = document.getElementById('cfg-supa-key').value.trim();
-  if (!url || !key) { toast('Preencha URL e Key', 'error'); return; }
-  localStorage.setItem('gf_supabase_url', url);
-  localStorage.setItem('gf_supabase_key', key);
-  if (initSupabase()) { toast('Conectado ao Supabase!'); renderDashboard(); }
-  else toast('Erro ao conectar', 'error');
-}
-
-async function testarSupabase() {
-  if (!isConnected()) { toast('Configure a conexão primeiro', 'error'); return; }
-  try {
-    const { data, error } = await supabaseClient.from('config').select('chave').limit(1);
-    if (error) throw error;
-    toast('Conexão OK!');
-    document.getElementById('supa-status').innerHTML = '<span style="color:var(--success);">Conectado</span>';
-  } catch(e) { toast('Erro: ' + e.message, 'error'); document.getElementById('supa-status').innerHTML = '<span style="color:var(--danger);">Falhou</span>'; }
-}
 
 // ================================================
 // CLIENTES
 // ================================================
 async function openClienteModal(id) {
   document.getElementById('cliente-id').value=''; ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-endereco','cliente-obs'].forEach(x=>document.getElementById(x).value='');
-  const cobs=await dbSelect('cobradores'), gers=await dbSelect('gerentes');
+  const cobs=await dbSelect('cobradores');
   document.getElementById('cliente-cobrador').innerHTML='<option value="">Nenhum</option>'+cobs.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-  document.getElementById('cliente-gerente').innerHTML='<option value="">Nenhum</option>'+gers.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
-  if(id){const cl=await dbSelect('clientes');const p=cl.find(x=>x.id===id);if(p){document.getElementById('modal-cliente-titulo').textContent='Editar Cliente';document.getElementById('cliente-id').value=p.id;document.getElementById('cliente-nome').value=p.nome;document.getElementById('cliente-cpf').value=p.cpf||'';document.getElementById('cliente-tel').value=p.telefone||'';document.getElementById('cliente-email').value=p.email||'';document.getElementById('cliente-endereco').value=p.endereco||'';document.getElementById('cliente-cobrador').value=p.cobradorId||'';document.getElementById('cliente-gerente').value=p.gerenteId||'';document.getElementById('cliente-obs').value=p.obs||'';}}
+  if(id){const cl=await dbSelect('clientes');const p=cl.find(x=>x.id===id);if(p){document.getElementById('modal-cliente-titulo').textContent='Editar Cliente';document.getElementById('cliente-id').value=p.id;document.getElementById('cliente-nome').value=p.nome;document.getElementById('cliente-cpf').value=p.cpf||'';document.getElementById('cliente-tel').value=p.telefone||'';document.getElementById('cliente-email').value=p.email||'';document.getElementById('cliente-endereco').value=p.endereco||'';document.getElementById('cliente-cobrador').value=p.cobradorId||'';document.getElementById('cliente-obs').value=p.obs||'';}}
   else document.getElementById('modal-cliente-titulo').textContent='Novo Cliente';
   openModal('modal-cliente');
 }
 async function salvarCliente() {
   const nome=document.getElementById('cliente-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
   const id=document.getElementById('cliente-id').value;
-  const d={nome,cpf:document.getElementById('cliente-cpf').value.trim(),telefone:document.getElementById('cliente-tel').value.trim(),email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:document.getElementById('cliente-cobrador').value,gerenteId:document.getElementById('cliente-gerente').value,obs:document.getElementById('cliente-obs').value.trim()};
+  const d={nome,cpf:document.getElementById('cliente-cpf').value.trim(),telefone:document.getElementById('cliente-tel').value.trim(),email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:document.getElementById('cliente-cobrador').value,obs:document.getElementById('cliente-obs').value.trim()};
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
   closeModal('modal-cliente');renderClientes();
 }
@@ -1101,28 +1011,6 @@ async function renderClientes() {
   tb.innerHTML=html;
 }
 
-// ================================================
-// GERENTES
-// ================================================
-async function openGerenteModal(id) {
-  document.getElementById('gerente-id').value='';['gerente-nome','gerente-tel','gerente-email','gerente-obs'].forEach(x=>document.getElementById(x).value='');
-  if(id){const gs=await dbSelect('gerentes');const g=gs.find(x=>x.id===id);if(g){document.getElementById('modal-gerente-titulo').textContent='Editar Gerente';document.getElementById('gerente-id').value=g.id;document.getElementById('gerente-nome').value=g.nome;document.getElementById('gerente-tel').value=g.telefone||'';document.getElementById('gerente-email').value=g.email||'';document.getElementById('gerente-obs').value=g.obs||'';}}
-  else document.getElementById('modal-gerente-titulo').textContent='Novo Gerente';
-  openModal('modal-gerente');
-}
-async function salvarGerente() {
-  const nome=document.getElementById('gerente-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
-  const id=document.getElementById('gerente-id').value;
-  const d={nome,telefone:document.getElementById('gerente-tel').value.trim(),email:document.getElementById('gerente-email').value.trim(),obs:document.getElementById('gerente-obs').value.trim()};
-  if(id){await dbUpdate('gerentes',id,d);toast('Gerente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('gerentes',d);toast('Gerente cadastrado!');}
-  closeModal('modal-gerente');renderGerentes();
-}
-async function excluirGerente(id){if(!await showConfirm('Excluir gerente?'))return;await dbDelete('gerentes',id);toast('Excluído!');renderGerentes();}
-async function renderGerentes() {
-  const gs=await dbSelect('gerentes'),cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),tb=document.getElementById('gerentes-table'),em=document.getElementById('gerentes-empty');
-  if(!gs.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
-  tb.innerHTML=gs.map(g=>{const cids=cl.filter(c=>c.gerenteId===g.id).map(c=>c.id);const ativos=es.filter(e=>cids.includes(e.pessoaId)&&e.status==='ativo').length;return `<tr><td><strong>${esc(g.nome)}</strong></td><td>${esc(g.telefone||'-')}</td><td>${esc(g.email||'-')}</td><td>${ativos}</td><td><button class="btn-icon" onclick="openGerenteModal('${g.id}')">&#9998;</button><button class="btn-icon" onclick="excluirGerente('${g.id}')">&#128465;</button></td></tr>`;}).join('');
-}
 
 // ================================================
 // COBRADORES
@@ -1479,10 +1367,6 @@ async function renderConfig(){
   document.getElementById('cfg-c-chq').textContent=(await dbSelect('cheques')).length;
   let t=0;DB_KEYS.forEach(k=>{const d=localStorage.getItem('gf_'+k);if(d)t+=d.length;});
   document.getElementById('cfg-storage').textContent=(t/1024).toFixed(1)+' KB';
-  // Supabase status
-  document.getElementById('cfg-supa-url').value = localStorage.getItem('gf_supabase_url') || '';
-  document.getElementById('cfg-supa-key').value = localStorage.getItem('gf_supabase_key') || '';
-  document.getElementById('supa-status').innerHTML = isConnected() ? '<span style="color:var(--success);">Conectado</span>' : '<span style="color:var(--danger);">Desconectado</span>';
 }
 async function salvarConfig(){
   if(isConnected()){
@@ -1505,69 +1389,6 @@ async function salvarApiConfig(){
 }
 async function testarApi(){const ia=await getIAConfig();if(!ia.apiKey){toast('Configure a API key primeiro','error');return;}try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ia.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:ia.modelo,max_tokens:50,messages:[{role:'user',content:'Responda apenas: OK'}]})});if(r.ok){toast('Conexão OK!');document.getElementById('ia-api-status').textContent='Conectada';document.getElementById('ia-api-status').style.color='var(--success)';}else{const e=await r.json();toast('Erro: '+(e.error?.message||r.status),'error');}}catch(e){toast('Erro de conexão: '+e.message,'error');}}
 
-// BACKUP
-async function exportarDados(){
-  const d={};
-  const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
-  for(const k of tables) d[k]=await dbSelect(k);
-  d.config=await getConfig();
-  d.iaconfig=await getIAConfig();
-  d._exportedAt=new Date().toISOString();d._version='2.0';
-  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`gestfin_backup_${today().replace(/-/g,'')}.json`;a.click();URL.revokeObjectURL(u);toast('Exportado!');
-}
-async function importarDados(ev){
-  const f=ev.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=async function(e){
-    try{
-      const d=JSON.parse(e.target.result);
-      if(!await showConfirm('Importar? Dados atuais serão substituídos.'))return;
-      const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
-      if(isConnected()){
-        // For Supabase, delete all and re-insert
-        for(const k of tables){
-          if(d[k]&&d[k].length){
-            // Delete existing
-            const existing=await dbSelect(k);
-            for(const item of existing) await dbDelete(k,item.id);
-            // Insert new
-            await dbBulkInsert(k,d[k]);
-          }
-        }
-        if(d.config){
-          for(const [key,val] of Object.entries(d.config)){
-            await setConfig(key,val);
-          }
-        }
-        if(d.iaconfig){
-          for(const [key,val] of Object.entries(d.iaconfig)){
-            await setConfig(key,val);
-          }
-        }
-      } else {
-        // localStorage fallback
-        for(const k of tables){if(d[k])setDBLocal(k,d[k]);}
-        if(d.config)setDBLocal('config',d.config);
-        if(d.iaconfig)setDBLocal('iaconfig',d.iaconfig);
-      }
-      toast('Importado!');navigateTo('dashboard');
-    }catch(err){toast('Arquivo inválido','error');console.error(err);}
-  };r.readAsText(f);ev.target.value='';
-}
-async function confirmarLimpar(){
-  if(!await showConfirm('ATENÇÃO: Todos os dados serão apagados!'))return;
-  const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
-  if(isConnected()){
-    for(const k of tables){
-      const existing=await dbSelect(k);
-      for(const item of existing) await dbDelete(k,item.id);
-    }
-    // Clear config
-    try{await supabaseClient.from('config').delete().neq('chave','');}catch(e){}
-  }
-  DB_KEYS.forEach(k=>localStorage.removeItem('gf_'+k));
-  toast('Dados apagados!');navigateTo('dashboard');
-}
 
 // ================================================
 // IA - ANÁLISE DE RISCO
