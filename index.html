@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestFin - Gestão de Empréstimos Pessoais</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #1a1d27;
+  --bg-card: #222633;
+  --bg-hover: #2a2e3d;
+  --bg-input: #181b24;
+  --border: #2e3347;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8b90a0;
+  --text-muted: #5a5f73;
+  --accent: #6c5ce7;
+  --accent-light: #a29bfe;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+  --info: #74b9ff;
+  --sidebar-w: 250px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --transition: 0.2s ease;
+}
+html { font-size: 14px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
+a { color: var(--accent-light); text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: 1rem; }
+table { width: 100%; border-collapse: collapse; }
+
+/* SIDEBAR */
+.sidebar { width: var(--sidebar-w); background: var(--bg-secondary); border-right: 1px solid var(--border); height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); }
+.sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
+.sidebar-header h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sidebar-header small { color: var(--text-muted); font-size: 0.75rem; }
+.sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; color: var(--text-secondary); font-size: 0.9rem; transition: all var(--transition); border-left: 3px solid transparent; position: relative; }
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active { background: rgba(108,92,231,0.1); color: var(--accent-light); border-left-color: var(--accent); }
+.nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+.nav-badge { background: var(--danger); color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700; margin-left: auto; }
+.nav-sep { height: 1px; background: var(--border); margin: 8px 16px; }
+.sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); text-align: center; }
+
+/* MAIN */
+.main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; padding: 24px 32px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.page-header h2 { font-size: 1.6rem; font-weight: 700; }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: transform var(--transition); }
+.stat-card:hover { transform: translateY(-2px); }
+.stat-card .label { color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 6px; }
+.stat-card .value { font-size: 1.6rem; font-weight: 700; }
+.stat-card .sub { color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; }
+.stat-card.accent .value { color: var(--accent-light); }
+.stat-card.success .value { color: var(--success); }
+.stat-card.warning .value { color: var(--warning); }
+.stat-card.danger .value { color: var(--danger); }
+.stat-card.info .value { color: var(--info); }
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.card-header h3 { font-size: 1.05rem; font-weight: 600; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; transition: all var(--transition); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #5b4bd5; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #00a381; }
+.btn-warning { background: var(--warning); color: #1a1d27; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #d35a42; }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+.btn-icon { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); }
+.btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-ai { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+.btn-ai:hover { background: linear-gradient(135deg, #5a6fd6, #6a4298); }
+
+/* FORMS */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
+.form-control { width: 100%; padding: 9px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); transition: border-color var(--transition); }
+.form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,92,231,0.15); }
+.form-control::placeholder { color: var(--text-muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b90a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+textarea.form-control { resize: vertical; min-height: 50px; }
+
+/* TABLES */
+.table-wrapper { overflow-x: auto; }
+table th, table td { padding: 10px 14px; text-align: left; }
+table thead th { background: var(--bg-primary); color: var(--text-secondary); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+table tbody tr:hover { background: var(--bg-hover); }
+table td { font-size: 0.85rem; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.modal-header h3 { font-size: 1.1rem; font-weight: 600; }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+.modal-lg { max-width: 900px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+.badge-success { background: rgba(0,184,148,0.15); color: var(--success); }
+.badge-warning { background: rgba(253,203,110,0.15); color: var(--warning); }
+.badge-danger { background: rgba(225,112,85,0.15); color: var(--danger); }
+.badge-info { background: rgba(116,185,255,0.15); color: var(--info); }
+.badge-accent { background: rgba(108,92,231,0.15); color: var(--accent-light); }
+
+/* SEARCH */
+.search-bar { position: relative; max-width: 300px; }
+.search-bar input { padding-left: 36px; }
+.search-bar svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 16px; height: 16px; }
+
+/* TOAST */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 20px; font-size: 0.85rem; box-shadow: var(--shadow); animation: slideIn 0.3s ease; max-width: 360px; display: flex; align-items: center; gap: 10px; }
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.warning { border-left: 3px solid var(--warning); }
+@keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+
+/* TABS */
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.tab-btn { padding: 10px 20px; background: none; border: none; color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; border-bottom: 2px solid transparent; transition: all var(--transition); }
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+/* EMPTY STATE */
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-state svg { width: 56px; height: 56px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state h3 { color: var(--text-secondary); margin-bottom: 8px; font-size: 1rem; }
+
+/* CHART */
+.chart-container { position: relative; width: 100%; height: 220px; }
+.chart-container canvas { width: 100% !important; height: 100% !important; }
+
+/* ALERT LIST */
+.alert-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.alert-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); font-size: 0.8rem; }
+.alert-item .name { font-weight: 500; }
+.alert-item .detail { color: var(--text-secondary); }
+
+/* PROGRESS BAR */
+.progress-bar { width: 100%; height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.progress-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+.progress-bar .fill.green { background: var(--success); }
+.progress-bar .fill.yellow { background: var(--warning); }
+.progress-bar .fill.red { background: var(--danger); }
+
+/* CONFIRM */
+.confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 250; }
+.confirm-overlay.active { display: flex; }
+.confirm-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 400px; text-align: center; box-shadow: var(--shadow); }
+.confirm-box p { margin-bottom: 20px; color: var(--text-secondary); }
+.confirm-box .btn-group { display: flex; justify-content: center; gap: 10px; }
+
+/* RISK METER */
+.risk-meter { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.risk-bar { flex: 1; height: 10px; background: var(--bg-primary); border-radius: 5px; overflow: hidden; position: relative; }
+.risk-bar .fill { height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+.risk-low { background: linear-gradient(90deg, #00b894, #55efc4); }
+.risk-med { background: linear-gradient(90deg, #fdcb6e, #f39c12); }
+.risk-high { background: linear-gradient(90deg, #e17055, #d63031); }
+.risk-label { font-weight: 700; font-size: 0.9rem; min-width: 50px; }
+.risk-label.low { color: var(--success); }
+.risk-label.med { color: var(--warning); }
+.risk-label.high { color: var(--danger); }
+
+/* AI CHAT */
+.ai-panel { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+.ai-messages { max-height: 300px; overflow-y: auto; margin-bottom: 12px; }
+.ai-msg { padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 0.85rem; line-height: 1.5; }
+.ai-msg.assistant { background: rgba(108,92,231,0.1); border-left: 3px solid var(--accent); }
+.ai-msg.user { background: var(--bg-card); }
+.ai-msg.loading { color: var(--text-muted); font-style: italic; }
+.ai-input-row { display: flex; gap: 8px; }
+.ai-input-row input { flex: 1; }
+
+/* PRINT */
+.recibo-print { display: none; }
+@media print {
+  body * { display: none !important; }
+  .recibo-print, .recibo-print * { display: block !important; }
+  .recibo-print { color: #000; background: #fff; padding: 40px; font-size: 12pt; }
+  .recibo-print h2 { margin-bottom: 20px; }
+  .recibo-print table { border-collapse: collapse; width: 100%; }
+  .recibo-print table th, .recibo-print table td { border: 1px solid #333; padding: 8px; text-align: left; }
+}
+
+/* MOBILE */
+.mobile-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 150; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; color: var(--text-primary); }
+@media (max-width: 768px) {
+  .mobile-toggle { display: flex; }
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; padding: 16px; padding-top: 56px; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .modal { width: 95%; }
+  .dash-grid-lower, .dash-grid-bottom { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<button class="mobile-toggle" onclick="toggleSidebar()">
+  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+</button>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h1>GestFin</h1>
+    <small>Empréstimos Pessoais</small>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" data-page="contratos" onclick="navigateTo('contratos')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M8 12h.01"/></svg>
+      Contratos
+    </a>
+    <a class="nav-item" data-page="cheques" onclick="navigateTo('cheques')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 15h4M14 15h4M6 11h12"/></svg>
+      Cheques
+    </a>
+    <div class="nav-sep"></div>
+    <a class="nav-item" data-page="receber-parcela" onclick="navigateTo('receber-parcela')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+      Receber Parcela
+      <span class="nav-badge" id="badge-parcelas">0</span>
+    </a>
+    <a class="nav-item" data-page="receber-cheque" onclick="navigateTo('receber-cheque')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+      Receber Cheque
+    </a>
+    <div class="nav-sep"></div>
+    <a class="nav-item" data-page="despesas" onclick="navigateTo('despesas')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" transform="rotate(180 12 12)"/><line x1="5" y1="21" x2="19" y2="21"/></svg>
+      Despesas
+    </a>
+    <a class="nav-item" data-page="clientes" onclick="navigateTo('clientes')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Clientes
+    </a>
+    <a class="nav-item" data-page="gerentes" onclick="navigateTo('gerentes')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Gerentes
+    </a>
+    <a class="nav-item" data-page="cobradores" onclick="navigateTo('cobradores')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 11l-3 3-3-3"/></svg>
+      Cobradores
+    </a>
+    <div class="nav-sep"></div>
+    <a class="nav-item" data-page="relatorios" onclick="navigateTo('relatorios')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Relatórios
+    </a>
+    <a class="nav-item" data-page="caixa" onclick="navigateTo('caixa')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M8 15h2M14 15h2"/></svg>
+      Caixa
+    </a>
+    <a class="nav-item" data-page="ia-risco" onclick="navigateTo('ia-risco')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4c0 1.5-.8 2.8-2 3.5V11h2a6 6 0 016 6v1H2v-1a6 6 0 016-6h2V9.5A4 4 0 0112 2z"/><circle cx="9" cy="15" r="1"/><circle cx="15" cy="15" r="1"/></svg>
+      IA - Análise Risco
+    </a>
+    <div class="nav-sep"></div>
+    <a class="nav-item" data-page="config" onclick="navigateTo('config')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Configurações
+    </a>
+    <a class="nav-item" data-page="backup" onclick="navigateTo('backup')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Backup
+    </a>
+  </nav>
+  <div class="sidebar-footer">GestFin v2.0 &copy; 2026</div>
+</aside>
+
+<main class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<section class="page active" id="page-dashboard">
+  <div class="page-header">
+    <h2>Dashboard</h2>
+    <select class="form-control" id="dash-periodo" style="width:auto;" onchange="renderDashboard()">
+      <option value="all">Todos os períodos</option>
+      <option value="month">Este mês</option>
+      <option value="quarter">Trimestre</option>
+      <option value="year">Este ano</option>
+    </select>
+  </div>
+  <div class="stats-grid" id="dash-stats"></div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;" class="dash-grid-lower">
+    <div class="card"><div class="card-header"><h3>Recebimentos por Mês</h3></div><div class="chart-container"><canvas id="chart-recebimentos"></canvas></div></div>
+    <div class="card"><div class="card-header"><h3>Parcelas Atrasadas</h3></div><div class="alert-list" id="dash-alerts"></div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;" class="dash-grid-bottom">
+    <div class="card"><div class="card-header"><h3>Próximos Vencimentos</h3></div><div class="alert-list" id="dash-proximos"></div></div>
+    <div class="card"><div class="card-header"><h3>Atividade Recente</h3></div><div class="alert-list" id="dash-atividade"></div></div>
+  </div>
+</section>
+
+<!-- ===== CONTRATOS (ex-Empréstimos) ===== -->
+<section class="page" id="page-contratos">
+  <div class="page-header">
+    <h2>Contratos</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select class="form-control" id="emp-filtro-status" style="width:auto;" onchange="renderContratos()">
+        <option value="all">Todos</option><option value="ativo">Ativos</option><option value="quitado">Quitados</option><option value="atrasado">Atrasados</option><option value="renegociado">Renegociados</option>
+      </select>
+      <button class="btn btn-primary" onclick="openContratoModal()">+ Novo Contrato</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Cliente</th><th>Valor</th><th>Juros</th><th>Parcelas</th><th>Início</th><th>Status</th><th>Progresso</th><th>Risco</th><th>Ações</th></tr></thead>
+      <tbody id="contratos-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="contratos-empty" style="display:none;">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+      <h3>Nenhum contrato registrado</h3><p>Cadastre clientes primeiro, depois crie contratos</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== DETALHE CONTRATO ===== -->
+<section class="page" id="page-contrato-detalhe">
+  <div class="page-header">
+    <h2 id="emp-detalhe-titulo">Detalhes do Contrato</h2>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="navigateTo('contratos')">Voltar</button>
+      <button class="btn btn-ai btn-sm" onclick="analisarRiscoContrato()">IA Analisar Risco</button>
+      <button class="btn btn-warning btn-sm" id="btn-renegociar" onclick="openRenegociarModal()">Renegociar</button>
+    </div>
+  </div>
+  <div class="stats-grid" id="emp-detalhe-stats"></div>
+  <div id="ai-risk-result" style="display:none;" class="card"></div>
+  <div class="card">
+    <div class="card-header"><h3>Parcelas</h3><span class="badge badge-info" id="emp-detalhe-sistema"></span></div>
+    <div class="table-wrapper">
+      <table><thead><tr><th>#</th><th>Vencimento</th><th>Principal</th><th>Juros</th><th>Total</th><th>Mora</th><th>Pago</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="parcelas-table"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Histórico de Pagamentos</h3></div>
+    <div class="table-wrapper">
+      <table><thead><tr><th>Data</th><th>Parcela</th><th>Valor</th><th>Tipo</th><th>Obs</th></tr></thead>
+      <tbody id="pagamentos-hist-table"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CHEQUES ===== -->
+<section class="page" id="page-cheques">
+  <div class="page-header">
+    <h2>Cheques</h2>
+    <div style="display:flex;gap:8px;">
+      <select class="form-control" id="cheque-filtro" style="width:auto;" onchange="renderCheques()">
+        <option value="all">Todos</option><option value="pendente">Pendentes</option><option value="compensado">Compensados</option><option value="devolvido">Devolvidos</option>
+      </select>
+      <button class="btn btn-primary" onclick="openChequeModal()">+ Novo Cheque</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Cliente</th><th>Nº Cheque</th><th>Banco</th><th>Valor</th><th>Emissão</th><th>Bom Para</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="cheques-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="cheques-empty" style="display:none;">
+      <h3>Nenhum cheque registrado</h3>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RECEBER PARCELA ===== -->
+<section class="page" id="page-receber-parcela">
+  <div class="page-header">
+    <h2>Receber Parcela</h2>
+    <div class="search-bar">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="form-control" placeholder="Buscar cliente..." id="recpar-search" oninput="renderReceberParcela()">
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setRecParTab('vencidas')">Vencidas</button>
+    <button class="tab-btn" onclick="setRecParTab('hoje')">Vencendo Hoje</button>
+    <button class="tab-btn" onclick="setRecParTab('proximas')">Próximas</button>
+    <button class="tab-btn" onclick="setRecParTab('todas')">Todas Pendentes</button>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Cliente</th><th>Contrato</th><th>#</th><th>Vencimento</th><th>Valor</th><th>Mora</th><th>Total</th><th>Ações</th></tr></thead>
+      <tbody id="recpar-table"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RECEBER CHEQUE ===== -->
+<section class="page" id="page-receber-cheque">
+  <div class="page-header"><h2>Receber Cheque</h2></div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Cliente</th><th>Nº Cheque</th><th>Banco</th><th>Valor</th><th>Bom Para</th><th>Ações</th></tr></thead>
+      <tbody id="recheque-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="recheque-empty" style="display:none;"><h3>Nenhum cheque pendente</h3></div>
+  </div>
+</section>
+
+<!-- ===== DESPESAS ===== -->
+<section class="page" id="page-despesas">
+  <div class="page-header">
+    <h2>Despesas</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input class="form-control" type="month" id="desp-mes" style="width:auto;" onchange="renderDespesas()">
+      <button class="btn btn-primary" onclick="openDespesaModal()">+ Nova Despesa</button>
+    </div>
+  </div>
+  <div class="stats-grid" id="desp-stats"></div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+      <tbody id="despesas-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="despesas-empty" style="display:none;"><h3>Nenhuma despesa registrada</h3></div>
+  </div>
+</section>
+
+<!-- ===== CLIENTES ===== -->
+<section class="page" id="page-clientes">
+  <div class="page-header">
+    <h2>Clientes</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="search-bar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="form-control" placeholder="Buscar nome ou CPF..." id="clientes-search" oninput="renderClientes()">
+      </div>
+      <button class="btn btn-primary" onclick="openClienteModal()">+ Novo Cliente</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Email</th><th>Cobrador</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="clientes-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="clientes-empty" style="display:none;">
+      <h3>Nenhum cliente cadastrado</h3><p>Clique em "+ Novo Cliente" para começar</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GERENTES ===== -->
+<section class="page" id="page-gerentes">
+  <div class="page-header">
+    <h2>Gerentes</h2>
+    <button class="btn btn-primary" onclick="openGerenteModal()">+ Novo Gerente</button>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Contratos Ativos</th><th>Ações</th></tr></thead>
+      <tbody id="gerentes-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="gerentes-empty" style="display:none;"><h3>Nenhum gerente cadastrado</h3></div>
+  </div>
+</section>
+
+<!-- ===== COBRADORES ===== -->
+<section class="page" id="page-cobradores">
+  <div class="page-header">
+    <h2>Cobradores</h2>
+    <button class="btn btn-primary" onclick="openCobradorModal()">+ Novo Cobrador</button>
+  </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table><thead><tr><th>Nome</th><th>Telefone</th><th>Comissão (%)</th><th>Clientes Vinculados</th><th>Ações</th></tr></thead>
+      <tbody id="cobradores-table"></tbody></table>
+    </div>
+    <div class="empty-state" id="cobradores-empty" style="display:none;"><h3>Nenhum cobrador cadastrado</h3></div>
+  </div>
+</section>
+
+<!-- ===== RELATÓRIOS ===== -->
+<section class="page" id="page-relatorios">
+  <div class="page-header"><h2>Relatórios</h2></div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showRelTab('extrato')">Extrato</button>
+    <button class="tab-btn" onclick="showRelTab('fluxo')">Fluxo de Caixa</button>
+    <button class="tab-btn" onclick="showRelTab('ranking')">Ranking</button>
+    <button class="tab-btn" onclick="showRelTab('atrasados')">Atrasados</button>
+    <button class="tab-btn" onclick="showRelTab('cobradores')">Por Cobrador</button>
+  </div>
+  <div id="rel-content">
+    <div id="rel-extrato"><div class="card"><div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px;"><div class="form-group" style="margin-bottom:0;flex:1;"><label>Cliente</label><select class="form-control" id="rel-pessoa" onchange="renderRelExtrato()"><option value="">Selecione...</option></select></div><button class="btn btn-ghost" onclick="window.print()">Imprimir</button></div><div id="rel-extrato-content"></div></div></div>
+    <div id="rel-fluxo" style="display:none;"><div class="card"><div class="card-header"><h3>Fluxo de Caixa - 12 Meses</h3></div><div class="table-wrapper" id="rel-fluxo-content"></div></div></div>
+    <div id="rel-ranking" style="display:none;"><div class="card"><div class="card-header"><h3>Ranking de Devedores</h3></div><div class="table-wrapper" id="rel-ranking-content"></div></div></div>
+    <div id="rel-atrasados" style="display:none;"><div class="card"><div class="card-header"><h3>Parcelas Atrasadas</h3></div><div class="table-wrapper" id="rel-atrasados-content"></div></div></div>
+    <div id="rel-cobradores" style="display:none;"><div class="card"><div class="card-header"><h3>Desempenho por Cobrador</h3></div><div class="table-wrapper" id="rel-cobradores-content"></div></div></div>
+  </div>
+</section>
+
+<!-- ===== CAIXA ===== -->
+<section class="page" id="page-caixa">
+  <div class="page-header">
+    <h2>Caixa</h2>
+    <input class="form-control" type="month" id="caixa-mes" style="width:auto;" onchange="renderCaixa()">
+  </div>
+  <div class="stats-grid" id="caixa-stats"></div>
+  <div class="card">
+    <div class="card-header"><h3>Movimentações</h3></div>
+    <div class="table-wrapper">
+      <table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Entrada</th><th>Saída</th><th>Saldo</th></tr></thead>
+      <tbody id="caixa-table"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== IA - ANÁLISE DE RISCO ===== -->
+<section class="page" id="page-ia-risco">
+  <div class="page-header"><h2>IA - Análise de Risco</h2></div>
+  <div class="stats-grid">
+    <div class="stat-card info"><div class="label">Modelo</div><div class="value" style="font-size:1rem;">Claude API</div><div class="sub">Anthropic</div></div>
+    <div class="stat-card" id="ia-status-card"><div class="label">Status da API</div><div class="value" style="font-size:1rem;" id="ia-api-status">Não configurada</div><div class="sub">Configure em Configurações</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Análise em Lote</h3></div>
+    <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.85rem;">Analise o risco de todos os contratos ativos de uma vez.</p>
+    <button class="btn btn-ai" onclick="analisarRiscoTodos()">Analisar Todos os Contratos</button>
+    <div id="ia-batch-results" style="margin-top:16px;"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Consultor IA</h3></div>
+    <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.85rem;">Faça perguntas sobre sua carteira de empréstimos.</p>
+    <div class="ai-panel">
+      <div class="ai-messages" id="ai-messages"></div>
+      <div class="ai-input-row">
+        <input class="form-control" id="ai-input" placeholder="Ex: Qual cliente tem maior risco de inadimplência?" onkeydown="if(event.key==='Enter')enviarMsgIA()">
+        <button class="btn btn-ai" onclick="enviarMsgIA()">Enviar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SIMULADOR ===== -->
+<section class="page" id="page-simulador">
+  <div class="page-header"><h2>Simulador de Empréstimo</h2></div>
+  <div class="card">
+    <div class="form-row-3">
+      <div class="form-group"><label>Valor</label><input class="form-control" type="number" id="sim-valor" step="0.01"></div>
+      <div class="form-group"><label>Taxa (% mês)</label><input class="form-control" type="number" id="sim-taxa" step="0.01"></div>
+      <div class="form-group"><label>Parcelas</label><input class="form-control" type="number" id="sim-parcelas"></div>
+    </div>
+    <button class="btn btn-primary" onclick="simular()" style="margin-top:8px;">Simular</button>
+  </div>
+  <div id="sim-resultados" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showSimTab('price')">Tabela Price</button>
+      <button class="tab-btn" onclick="showSimTab('sac')">SAC</button>
+    </div>
+    <div class="stats-grid" id="sim-resumo"></div>
+    <div class="card"><div class="table-wrapper"><table><thead><tr><th>#</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr></thead><tbody id="sim-tabela"></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- ===== CONFIGURAÇÕES ===== -->
+<section class="page" id="page-config">
+  <div class="page-header"><h2>Configurações</h2></div>
+  <div class="card">
+    <div class="card-header"><h3>Parâmetros Gerais</h3></div>
+    <div class="form-row">
+      <div class="form-group"><label>Taxa de Mora Padrão (% ao dia)</label><input class="form-control" type="number" id="cfg-mora" step="0.001" value="0.033"></div>
+      <div class="form-group"><label>Moeda</label><select class="form-control" id="cfg-moeda"><option value="BRL">R$ - Real</option><option value="USD">US$ - Dólar</option><option value="EUR">€ - Euro</option></select></div>
+    </div>
+    <button class="btn btn-primary" onclick="salvarConfig()">Salvar</button>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Conexão Supabase</h3></div>
+    <div class="form-row">
+      <div class="form-group"><label>Supabase URL</label><input class="form-control" id="cfg-supa-url" placeholder="https://xxx.supabase.co"></div>
+      <div class="form-group"><label>Supabase Anon Key</label><input class="form-control" type="password" id="cfg-supa-key" placeholder="eyJ..."></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="salvarSupabaseConfig()">Conectar</button>
+      <button class="btn btn-ghost" onclick="testarSupabase()">Testar Conexão</button>
+      <span id="supa-status" style="display:flex;align-items:center;color:var(--text-muted);font-size:0.85rem;"></span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>API de IA (Anthropic Claude)</h3></div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input class="form-control" type="password" id="cfg-apikey" placeholder="sk-ant-api...">
+    </div>
+    <div class="form-group">
+      <label>Modelo</label>
+      <select class="form-control" id="cfg-modelo">
+        <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recomendado)</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Mais rápido)</option>
+        <option value="claude-opus-4-6">Claude Opus 4.6 (Mais capaz)</option>
+      </select>
+    </div>
+    <button class="btn btn-ai" onclick="salvarApiConfig()">Salvar Configurações IA</button>
+    <button class="btn btn-ghost" onclick="testarApi()" style="margin-left:8px;">Testar Conexão</button>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Info do Sistema</h3></div>
+    <div style="color:var(--text-secondary);font-size:0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+      <p>Clientes: <strong id="cfg-c-cli">0</strong></p>
+      <p>Contratos: <strong id="cfg-c-emp">0</strong></p>
+      <p>Pagamentos: <strong id="cfg-c-pag">0</strong></p>
+      <p>Cheques: <strong id="cfg-c-chq">0</strong></p>
+      <p>Armazenamento: <strong id="cfg-storage">0 KB</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BACKUP ===== -->
+<section class="page" id="page-backup">
+  <div class="page-header"><h2>Backup</h2></div>
+  <div class="card">
+    <div class="card-header"><h3>Exportar Dados</h3></div>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Exporta todos os dados do sistema em formato JSON.</p>
+    <button class="btn btn-success" onclick="exportarDados()">Exportar JSON</button>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Importar Dados</h3></div>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Importa dados de um backup JSON. Os dados atuais serão substituídos.</p>
+    <label class="btn btn-ghost" style="cursor:pointer;">Selecionar Arquivo JSON<input type="file" accept=".json" onchange="importarDados(event)" style="display:none;"></label>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Limpar Dados</h3></div>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">Remove todos os dados permanentemente.</p>
+    <button class="btn btn-danger" onclick="confirmarLimpar()">Limpar Todos os Dados</button>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== MODAIS ===== -->
+
+<!-- Modal Cliente -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-cliente-titulo">Novo Cliente</h3><button class="btn-icon" onclick="closeModal('modal-cliente')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cliente-id">
+      <div class="form-row">
+        <div class="form-group"><label>Nome *</label><input class="form-control" id="cliente-nome"></div>
+        <div class="form-group"><label>CPF</label><input class="form-control" id="cliente-cpf" oninput="maskCPF(this)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Telefone</label><input class="form-control" id="cliente-tel" oninput="maskTel(this)"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" type="email" id="cliente-email"></div>
+      </div>
+      <div class="form-group"><label>Endereço</label><input class="form-control" id="cliente-endereco"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
+        <div class="form-group"><label>Gerente</label><select class="form-control" id="cliente-gerente"><option value="">Nenhum</option></select></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal Contrato -->
+<div class="modal-overlay" id="modal-contrato">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 id="modal-emp-titulo">Novo Contrato</h3><button class="btn-icon" onclick="closeModal('modal-contrato')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="emp-id">
+      <div class="form-row">
+        <div class="form-group"><label>Cliente *</label><select class="form-control" id="emp-pessoa"></select></div>
+        <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="emp-valor" step="0.01"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="emp-taxa" step="0.01"></div>
+        <div class="form-group"><label>Sistema *</label><select class="form-control" id="emp-sistema"><option value="price">Tabela Price</option><option value="sac">SAC</option></select></div>
+        <div class="form-group"><label>Nº Parcelas *</label><input class="form-control" type="number" id="emp-nparcelas" min="1" max="360"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="emp-inicio"></div>
+        <div class="form-group"><label>Dia Vencimento (1-28)</label><input class="form-control" type="number" id="emp-diavenc" min="1" max="28" value="10"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="emp-obs"></textarea></div>
+      <button class="btn btn-ghost" onclick="previewParcelas()" style="margin-top:4px;">Pré-visualizar</button>
+      <div id="emp-preview" style="display:none;margin-top:12px;">
+        <div class="table-wrapper" style="max-height:250px;overflow-y:auto;">
+          <table><thead><tr><th>#</th><th>Venc.</th><th>Amort.</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr></thead><tbody id="emp-preview-table"></tbody></table>
+        </div>
+        <div style="margin-top:8px;color:var(--text-secondary);font-size:0.8rem;" id="emp-preview-total"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-contrato')">Cancelar</button><button class="btn btn-primary" onclick="salvarContrato()">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Modal Pagamento -->
+<div class="modal-overlay" id="modal-pagamento">
+  <div class="modal">
+    <div class="modal-header"><h3>Registrar Pagamento</h3><button class="btn-icon" onclick="closeModal('modal-pagamento')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pag-parcela-id"><input type="hidden" id="pag-emprestimo-id">
+      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:0.85rem;">
+        <div style="display:flex;justify-content:space-between;"><span>Parcela: <strong id="pag-info-parcela"></strong></span><span>Valor: <strong id="pag-info-valor"></strong></span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Vencimento: <strong id="pag-info-venc"></strong></span><span>Mora: <strong id="pag-info-mora"></strong></span></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor Pagamento *</label><input class="form-control" type="number" id="pag-valor" step="0.01"></div>
+        <div class="form-group"><label>Data Pagamento *</label><input class="form-control" type="date" id="pag-data"></div>
+      </div>
+      <div class="form-group"><label>Tipo</label><select class="form-control" id="pag-tipo"><option value="total">Total</option><option value="parcial">Parcial</option><option value="antecipado">Antecipado</option></select></div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="pag-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-pagamento')">Cancelar</button><button class="btn btn-ghost" onclick="gerarRecibo()">Recibo</button><button class="btn btn-success" onclick="salvarPagamento()">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Modal Renegociar -->
+<div class="modal-overlay" id="modal-renegociar">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3>Renegociar Contrato</h3><button class="btn-icon" onclick="closeModal('modal-renegociar')">&times;</button></div>
+    <div class="modal-body">
+      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;"><p style="font-size:0.9rem;">Saldo devedor: <strong id="reneg-saldo" style="color:var(--warning);"></strong></p></div>
+      <input type="hidden" id="reneg-emp-id">
+      <div class="form-row-3">
+        <div class="form-group"><label>Novo Valor</label><input class="form-control" type="number" id="reneg-valor" step="0.01"></div>
+        <div class="form-group"><label>Nova Taxa (% mês)</label><input class="form-control" type="number" id="reneg-taxa" step="0.01"></div>
+        <div class="form-group"><label>Novas Parcelas</label><input class="form-control" type="number" id="reneg-parcelas" min="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Sistema</label><select class="form-control" id="reneg-sistema"><option value="price">Tabela Price</option><option value="sac">SAC</option></select></div>
+        <div class="form-group"><label>Data Início</label><input class="form-control" type="date" id="reneg-inicio"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="reneg-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-renegociar')">Cancelar</button><button class="btn btn-warning" onclick="salvarRenegociacao()">Renegociar</button></div>
+  </div>
+</div>
+
+<!-- Modal Cheque -->
+<div class="modal-overlay" id="modal-cheque">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-cheque-titulo">Novo Cheque</h3><button class="btn-icon" onclick="closeModal('modal-cheque')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cheque-id">
+      <div class="form-row">
+        <div class="form-group"><label>Cliente *</label><select class="form-control" id="cheque-cliente"></select></div>
+        <div class="form-group"><label>Contrato (opcional)</label><select class="form-control" id="cheque-contrato"><option value="">Nenhum</option></select></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Nº Cheque *</label><input class="form-control" id="cheque-numero"></div>
+        <div class="form-group"><label>Banco</label><input class="form-control" id="cheque-banco"></div>
+        <div class="form-group"><label>Agência</label><input class="form-control" id="cheque-agencia"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Valor *</label><input class="form-control" type="number" id="cheque-valor" step="0.01"></div>
+        <div class="form-group"><label>Data Emissão</label><input class="form-control" type="date" id="cheque-emissao"></div>
+        <div class="form-group"><label>Bom Para *</label><input class="form-control" type="date" id="cheque-bompara"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="cheque-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cheque')">Cancelar</button><button class="btn btn-primary" onclick="salvarCheque()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal Despesa -->
+<div class="modal-overlay" id="modal-despesa">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-despesa-titulo">Nova Despesa</h3><button class="btn-icon" onclick="closeModal('modal-despesa')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="despesa-id">
+      <div class="form-row">
+        <div class="form-group"><label>Descrição *</label><input class="form-control" id="despesa-descricao"></div>
+        <div class="form-group"><label>Categoria</label><select class="form-control" id="despesa-categoria"><option value="operacional">Operacional</option><option value="pessoal">Pessoal</option><option value="comissao">Comissão</option><option value="transporte">Transporte</option><option value="outro">Outro</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor *</label><input class="form-control" type="number" id="despesa-valor" step="0.01"></div>
+        <div class="form-group"><label>Data *</label><input class="form-control" type="date" id="despesa-data"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="despesa-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-despesa')">Cancelar</button><button class="btn btn-primary" onclick="salvarDespesa()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal Gerente -->
+<div class="modal-overlay" id="modal-gerente">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-gerente-titulo">Novo Gerente</h3><button class="btn-icon" onclick="closeModal('modal-gerente')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="gerente-id">
+      <div class="form-row"><div class="form-group"><label>Nome *</label><input class="form-control" id="gerente-nome"></div><div class="form-group"><label>Telefone</label><input class="form-control" id="gerente-tel" oninput="maskTel(this)"></div></div>
+      <div class="form-group"><label>Email</label><input class="form-control" id="gerente-email"></div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="gerente-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-gerente')">Cancelar</button><button class="btn btn-primary" onclick="salvarGerente()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Modal Cobrador -->
+<div class="modal-overlay" id="modal-cobrador">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-cobrador-titulo">Novo Cobrador</h3><button class="btn-icon" onclick="closeModal('modal-cobrador')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cobrador-id">
+      <div class="form-row"><div class="form-group"><label>Nome *</label><input class="form-control" id="cobrador-nome"></div><div class="form-group"><label>Telefone</label><input class="form-control" id="cobrador-tel" oninput="maskTel(this)"></div></div>
+      <div class="form-row"><div class="form-group"><label>Comissão (%)</label><input class="form-control" type="number" id="cobrador-comissao" step="0.1" value="10"></div><div class="form-group"><label>Email</label><input class="form-control" id="cobrador-email"></div></div>
+      <div class="form-group"><label>Observações</label><textarea class="form-control" id="cobrador-obs"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cobrador')">Cancelar</button><button class="btn btn-primary" onclick="salvarCobrador()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="confirm-overlay" id="confirm-dialog">
+  <div class="confirm-box"><p id="confirm-msg">Tem certeza?</p><div class="btn-group"><button class="btn btn-ghost" onclick="closeConfirm(false)">Cancelar</button><button class="btn btn-danger" onclick="closeConfirm(true)">Confirmar</button></div></div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="recibo-print" id="recibo-print"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ================================================
+// DATA LAYER - SUPABASE + LOCALSTORAGE FALLBACK
+// ================================================
+const DB_KEYS = ['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores','config','iaconfig'];
+
+// Supabase client
+let supabaseClient = null;
+let DB_CACHE = {}; // in-memory cache
+
+function initSupabase() {
+  const url = localStorage.getItem('gf_supabase_url') || '';
+  const key = localStorage.getItem('gf_supabase_key') || '';
+  if (url && key) {
+    supabaseClient = window.supabase.createClient(url, key);
+    return true;
+  }
+  return false;
+}
+
+function isConnected() { return supabaseClient !== null; }
+
+// Column name mapping (JS camelCase -> SQL snake_case)
+const COL_MAP = {
+  clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', gerenteId:'gerente_id', criadoEm:'criado_em' },
+  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', diaVencimento:'dia_vencimento', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
+  parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
+  pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
+  cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
+  despesas: { criadoEm:'criado_em' },
+  gerentes: { criadoEm:'criado_em' },
+  cobradores: { criadoEm:'criado_em' }
+};
+
+function toSnake(table, obj) {
+  const map = COL_MAP[table] || {};
+  const result = {};
+  for (const [k,v] of Object.entries(obj)) {
+    if (k === 'id') continue; // Let Supabase generate UUID
+    result[map[k] || k] = v;
+  }
+  return result;
+}
+
+function toCamel(table, obj) {
+  if (!obj) return obj;
+  const map = COL_MAP[table] || {};
+  const reverse = {};
+  for (const [k,v] of Object.entries(map)) reverse[v] = k;
+  const result = {};
+  for (const [k,v] of Object.entries(obj)) {
+    result[reverse[k] || k] = v;
+  }
+  return result;
+}
+
+// Generic async DB operations
+async function dbSelect(table) {
+  if (!isConnected()) return getDBLocal(table);
+  try {
+    const { data, error } = await supabaseClient.from(table).select('*');
+    if (error) throw error;
+    const mapped = (data || []).map(r => toCamel(table, r));
+    DB_CACHE[table] = mapped;
+    return mapped;
+  } catch(e) {
+    console.error('DB select error:', table, e);
+    return DB_CACHE[table] || getDBLocal(table);
+  }
+}
+
+async function dbInsert(table, record) {
+  if (!isConnected()) { const arr = getDBLocal(table); arr.push(record); setDBLocal(table, arr); return record; }
+  try {
+    const snake = toSnake(table, record);
+    const { data, error } = await supabaseClient.from(table).insert(snake).select().single();
+    if (error) throw error;
+    return toCamel(table, data);
+  } catch(e) { console.error('DB insert error:', e); toast('Erro ao salvar: ' + e.message, 'error'); return record; }
+}
+
+async function dbUpdate(table, id, updates) {
+  if (!isConnected()) { const arr = getDBLocal(table); const i = arr.findIndex(x=>x.id===id); if(i>=0) arr[i]={...arr[i],...updates}; setDBLocal(table,arr); return; }
+  try {
+    const snake = toSnake(table, updates);
+    // Re-add id fields that toSnake strips
+    delete snake.id;
+    const { error } = await supabaseClient.from(table).update(snake).eq('id', id);
+    if (error) throw error;
+  } catch(e) { console.error('DB update error:', e); }
+}
+
+async function dbDelete(table, id) {
+  if (!isConnected()) { setDBLocal(table, getDBLocal(table).filter(x=>x.id!==id)); return; }
+  try {
+    const { error } = await supabaseClient.from(table).delete().eq('id', id);
+    if (error) throw error;
+  } catch(e) { console.error('DB delete error:', e); }
+}
+
+async function dbBulkInsert(table, records) {
+  if (!isConnected()) { const arr = getDBLocal(table); arr.push(...records); setDBLocal(table, arr); return records; }
+  try {
+    const snaked = records.map(r => toSnake(table, r));
+    const { data, error } = await supabaseClient.from(table).insert(snaked).select();
+    if (error) throw error;
+    return (data || []).map(r => toCamel(table, r));
+  } catch(e) { console.error('DB bulk insert error:', e); return records; }
+}
+
+// Config is special (key-value table in Supabase)
+async function getConfig() {
+  if (!isConnected()) return getDBLocal('config') || {jurosMoraPadrao:0.033, moeda:'BRL'};
+  try {
+    const { data, error } = await supabaseClient.from('config').select('*');
+    if (error) throw error;
+    const cfg = {};
+    (data || []).forEach(r => { cfg[r.chave] = r.valor; });
+    return { jurosMoraPadrao: parseFloat(cfg.jurosMoraPadrao || '0.033'), moeda: cfg.moeda || 'BRL' };
+  } catch(e) { return getDBLocal('config') || {jurosMoraPadrao:0.033, moeda:'BRL'}; }
+}
+
+async function setConfig(key, value) {
+  if (!isConnected()) { const c = getDBLocal('config') || {}; c[key] = value; setDBLocal('config', c); return; }
+  try {
+    await supabaseClient.from('config').upsert({ chave: key, valor: String(value) });
+  } catch(e) { console.error('Config save error:', e); }
+}
+
+async function getIAConfig() {
+  if (!isConnected()) return getDBLocal('iaconfig') || {apiKey:'', modelo:'claude-sonnet-4-6'};
+  try {
+    const { data } = await supabaseClient.from('config').select('*').in('chave', ['apiKey', 'modelo']);
+    const cfg = {};
+    (data || []).forEach(r => { cfg[r.chave] = r.valor; });
+    return { apiKey: cfg.apiKey || '', modelo: cfg.modelo || 'claude-sonnet-4-6' };
+  } catch(e) { return getDBLocal('iaconfig') || {apiKey:'', modelo:'claude-sonnet-4-6'}; }
+}
+
+// localStorage fallback
+function getDBLocal(k) { try { return JSON.parse(localStorage.getItem('gf_'+k)) || defaultDB(k); } catch { return defaultDB(k); } }
+function setDBLocal(k, d) { localStorage.setItem('gf_'+k, JSON.stringify(d)); }
+function defaultDB(k) { if(k==='config') return {jurosMoraPadrao:0.033,moeda:'BRL'}; if(k==='iaconfig') return {apiKey:'',modelo:'claude-sonnet-4-6'}; return []; }
+function genId() { return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// FORMATTERS
+let _moedaCache = null;
+async function loadMoedaConfig() { _moedaCache = await getConfig(); }
+function moeda(v) { const c=_moedaCache||{moeda:'BRL'}, sym={BRL:'R$',USD:'US$',EUR:'€'}; return (sym[c.moeda]||'R$')+' '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtData(d) { if(!d) return '-'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
+function fmtPct(v) { return Number(v||0).toFixed(2)+'%'; }
+
+// MASKS
+function maskCPF(el) { let v=el.value.replace(/\D/g,'').substr(0,11); if(v.length>9) v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4'); else if(v.length>6) v=v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3'); else if(v.length>3) v=v.replace(/(\d{3})(\d{1,3})/,'$1.$2'); el.value=v; }
+function maskTel(el) { let v=el.value.replace(/\D/g,'').substr(0,11); if(v.length>6) v=v.replace(/(\d{2})(\d{4,5})(\d{1,4})/,'($1) $2-$3'); else if(v.length>2) v=v.replace(/(\d{2})(\d{1,5})/,'($1) $2'); el.value=v; }
+
+// TOAST & CONFIRM
+function toast(m,t='success') { const c=document.getElementById('toast-container'), e=document.createElement('div'); e.className='toast '+t; e.textContent=m; c.appendChild(e); setTimeout(()=>e.remove(),3500); }
+let confirmResolve=null;
+function showConfirm(m) { return new Promise(r=>{ confirmResolve=r; document.getElementById('confirm-msg').textContent=m; document.getElementById('confirm-dialog').classList.add('active'); }); }
+function closeConfirm(r) { document.getElementById('confirm-dialog').classList.remove('active'); if(confirmResolve){confirmResolve(r);confirmResolve=null;} }
+
+// NAV
+function navigateTo(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('page-'+p); if(el) el.classList.add('active');
+  const nav=document.querySelector(`.nav-item[data-page="${p}"]`); if(nav) nav.classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+  const renders = {dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,gerentes:renderGerentes,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco,backup:()=>{}};
+  if(renders[p]) renders[p]();
+}
+function navigateToPage(p) { document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); const el=document.getElementById('page-'+p); if(el) el.classList.add('active'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ================================================
+// CÁLCULOS FINANCEIROS
+// ================================================
+function calcPrice(v,t,n) { const i=t/100, pmt=v*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1), ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i,a=pmt-j;s-=a;ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});} return ps; }
+function calcSAC(v,t,n) { const i=t/100,ac=v/n,ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i;s-=ac;ps.push({numero:x,amortizacao:ac,juros:j,parcela:ac+j,saldo:Math.max(s,0)});} return ps; }
+function calcParcelas(v,t,s,n) { return s==='sac'?calcSAC(v,t,n):calcPrice(v,t,n); }
+async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
+function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
+function gerarVencimentos(di,dv,n) { const ini=new Date(di),vs=[]; let m=ini.getMonth()+1,a=ini.getFullYear(); for(let i=0;i<n;i++){m++;if(m>12){m=1;a++;}const d=Math.min(dv,new Date(a,m,0).getDate());vs.push(`${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);} return vs; }
+
+// ================================================
+// SUPABASE CONNECTION
+// ================================================
+function salvarSupabaseConfig() {
+  const url = document.getElementById('cfg-supa-url').value.trim();
+  const key = document.getElementById('cfg-supa-key').value.trim();
+  if (!url || !key) { toast('Preencha URL e Key', 'error'); return; }
+  localStorage.setItem('gf_supabase_url', url);
+  localStorage.setItem('gf_supabase_key', key);
+  if (initSupabase()) { toast('Conectado ao Supabase!'); renderDashboard(); }
+  else toast('Erro ao conectar', 'error');
+}
+
+async function testarSupabase() {
+  if (!isConnected()) { toast('Configure a conexão primeiro', 'error'); return; }
+  try {
+    const { data, error } = await supabaseClient.from('config').select('chave').limit(1);
+    if (error) throw error;
+    toast('Conexão OK!');
+    document.getElementById('supa-status').innerHTML = '<span style="color:var(--success);">Conectado</span>';
+  } catch(e) { toast('Erro: ' + e.message, 'error'); document.getElementById('supa-status').innerHTML = '<span style="color:var(--danger);">Falhou</span>'; }
+}
+
+// ================================================
+// CLIENTES
+// ================================================
+async function openClienteModal(id) {
+  document.getElementById('cliente-id').value=''; ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-endereco','cliente-obs'].forEach(x=>document.getElementById(x).value='');
+  const cobs=await dbSelect('cobradores'), gers=await dbSelect('gerentes');
+  document.getElementById('cliente-cobrador').innerHTML='<option value="">Nenhum</option>'+cobs.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  document.getElementById('cliente-gerente').innerHTML='<option value="">Nenhum</option>'+gers.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
+  if(id){const cl=await dbSelect('clientes');const p=cl.find(x=>x.id===id);if(p){document.getElementById('modal-cliente-titulo').textContent='Editar Cliente';document.getElementById('cliente-id').value=p.id;document.getElementById('cliente-nome').value=p.nome;document.getElementById('cliente-cpf').value=p.cpf||'';document.getElementById('cliente-tel').value=p.telefone||'';document.getElementById('cliente-email').value=p.email||'';document.getElementById('cliente-endereco').value=p.endereco||'';document.getElementById('cliente-cobrador').value=p.cobradorId||'';document.getElementById('cliente-gerente').value=p.gerenteId||'';document.getElementById('cliente-obs').value=p.obs||'';}}
+  else document.getElementById('modal-cliente-titulo').textContent='Novo Cliente';
+  openModal('modal-cliente');
+}
+async function salvarCliente() {
+  const nome=document.getElementById('cliente-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
+  const id=document.getElementById('cliente-id').value;
+  const d={nome,cpf:document.getElementById('cliente-cpf').value.trim(),telefone:document.getElementById('cliente-tel').value.trim(),email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:document.getElementById('cliente-cobrador').value,gerenteId:document.getElementById('cliente-gerente').value,obs:document.getElementById('cliente-obs').value.trim()};
+  if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
+  closeModal('modal-cliente');renderClientes();
+}
+async function excluirCliente(id){if(!await showConfirm('Excluir este cliente?'))return;await dbDelete('clientes',id);toast('Excluído!');renderClientes();}
+async function getClienteStatus(cid, es, ps) {
+  const h=today();
+  const myEs=es.filter(e=>e.pessoaId===cid);
+  if(!myEs.length) return {l:'Sem contratos',c:'badge-info'};
+  let at=false,atr=false,tq=true;
+  myEs.forEach(e=>{if(e.status!=='quitado')tq=false;if(e.status==='ativo')at=true;if(ps.filter(p=>p.emprestimoId===e.id&&p.status==='pendente'&&p.dataVencimento<h).length)atr=true;});
+  if(atr)return{l:'Inadimplente',c:'badge-danger'};if(at)return{l:'Devedor Ativo',c:'badge-warning'};if(tq)return{l:'Quitado',c:'badge-success'};return{l:'Ativo',c:'badge-accent'};
+}
+async function renderClientes() {
+  const cl=await dbSelect('clientes'),cobs=await dbSelect('cobradores'),es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas');
+  const s=(document.getElementById('clientes-search')?.value||'').toLowerCase();
+  const f=cl.filter(p=>p.nome.toLowerCase().includes(s)||(p.cpf||'').includes(s));
+  const tb=document.getElementById('clientes-table'),em=document.getElementById('clientes-empty');
+  if(!f.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  let html='';
+  for(const p of f){
+    const st=await getClienteStatus(p.id,es,ps);
+    const cob=cobs.find(c=>c.id===p.cobradorId);
+    html+=`<tr><td><strong>${esc(p.nome)}</strong></td><td>${esc(p.cpf||'-')}</td><td>${esc(p.telefone||'-')}</td><td>${esc(p.email||'-')}</td><td>${cob?esc(cob.nome):'-'}</td><td><span class="badge ${st.c}">${st.l}</span></td><td><button class="btn-icon" onclick="openClienteModal('${p.id}')" title="Editar">&#9998;</button><button class="btn-icon" onclick="excluirCliente('${p.id}')" title="Excluir">&#128465;</button></td></tr>`;
+  }
+  tb.innerHTML=html;
+}
+
+// ================================================
+// GERENTES
+// ================================================
+async function openGerenteModal(id) {
+  document.getElementById('gerente-id').value='';['gerente-nome','gerente-tel','gerente-email','gerente-obs'].forEach(x=>document.getElementById(x).value='');
+  if(id){const gs=await dbSelect('gerentes');const g=gs.find(x=>x.id===id);if(g){document.getElementById('modal-gerente-titulo').textContent='Editar Gerente';document.getElementById('gerente-id').value=g.id;document.getElementById('gerente-nome').value=g.nome;document.getElementById('gerente-tel').value=g.telefone||'';document.getElementById('gerente-email').value=g.email||'';document.getElementById('gerente-obs').value=g.obs||'';}}
+  else document.getElementById('modal-gerente-titulo').textContent='Novo Gerente';
+  openModal('modal-gerente');
+}
+async function salvarGerente() {
+  const nome=document.getElementById('gerente-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
+  const id=document.getElementById('gerente-id').value;
+  const d={nome,telefone:document.getElementById('gerente-tel').value.trim(),email:document.getElementById('gerente-email').value.trim(),obs:document.getElementById('gerente-obs').value.trim()};
+  if(id){await dbUpdate('gerentes',id,d);toast('Gerente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('gerentes',d);toast('Gerente cadastrado!');}
+  closeModal('modal-gerente');renderGerentes();
+}
+async function excluirGerente(id){if(!await showConfirm('Excluir gerente?'))return;await dbDelete('gerentes',id);toast('Excluído!');renderGerentes();}
+async function renderGerentes() {
+  const gs=await dbSelect('gerentes'),cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),tb=document.getElementById('gerentes-table'),em=document.getElementById('gerentes-empty');
+  if(!gs.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=gs.map(g=>{const cids=cl.filter(c=>c.gerenteId===g.id).map(c=>c.id);const ativos=es.filter(e=>cids.includes(e.pessoaId)&&e.status==='ativo').length;return `<tr><td><strong>${esc(g.nome)}</strong></td><td>${esc(g.telefone||'-')}</td><td>${esc(g.email||'-')}</td><td>${ativos}</td><td><button class="btn-icon" onclick="openGerenteModal('${g.id}')">&#9998;</button><button class="btn-icon" onclick="excluirGerente('${g.id}')">&#128465;</button></td></tr>`;}).join('');
+}
+
+// ================================================
+// COBRADORES
+// ================================================
+async function openCobradorModal(id) {
+  document.getElementById('cobrador-id').value='';['cobrador-nome','cobrador-tel','cobrador-email','cobrador-obs'].forEach(x=>document.getElementById(x).value='');document.getElementById('cobrador-comissao').value='10';
+  if(id){const cs=await dbSelect('cobradores');const c=cs.find(x=>x.id===id);if(c){document.getElementById('modal-cobrador-titulo').textContent='Editar Cobrador';document.getElementById('cobrador-id').value=c.id;document.getElementById('cobrador-nome').value=c.nome;document.getElementById('cobrador-tel').value=c.telefone||'';document.getElementById('cobrador-email').value=c.email||'';document.getElementById('cobrador-comissao').value=c.comissao||10;document.getElementById('cobrador-obs').value=c.obs||'';}}
+  else document.getElementById('modal-cobrador-titulo').textContent='Novo Cobrador';
+  openModal('modal-cobrador');
+}
+async function salvarCobrador() {
+  const nome=document.getElementById('cobrador-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
+  const id=document.getElementById('cobrador-id').value;
+  const d={nome,telefone:document.getElementById('cobrador-tel').value.trim(),email:document.getElementById('cobrador-email').value.trim(),comissao:parseFloat(document.getElementById('cobrador-comissao').value)||10,obs:document.getElementById('cobrador-obs').value.trim()};
+  if(id){await dbUpdate('cobradores',id,d);toast('Cobrador atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('cobradores',d);toast('Cobrador cadastrado!');}
+  closeModal('modal-cobrador');renderCobradores();
+}
+async function excluirCobrador(id){if(!await showConfirm('Excluir cobrador?'))return;await dbDelete('cobradores',id);toast('Excluído!');renderCobradores();}
+async function renderCobradores() {
+  const cs=await dbSelect('cobradores'),cl=await dbSelect('clientes'),tb=document.getElementById('cobradores-table'),em=document.getElementById('cobradores-empty');
+  if(!cs.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=cs.map(c=>{const vinc=cl.filter(x=>x.cobradorId===c.id).length;return `<tr><td><strong>${esc(c.nome)}</strong></td><td>${esc(c.telefone||'-')}</td><td>${c.comissao||10}%</td><td>${vinc}</td><td><button class="btn-icon" onclick="openCobradorModal('${c.id}')">&#9998;</button><button class="btn-icon" onclick="excluirCobrador('${c.id}')">&#128465;</button></td></tr>`;}).join('');
+}
+
+// ================================================
+// CONTRATOS (EMPRÉSTIMOS)
+// ================================================
+async function openContratoModal() {
+  const cl=await dbSelect('clientes'); if(!cl.length){toast('Cadastre um cliente primeiro','warning');return;}
+  ['emp-id','emp-valor','emp-taxa','emp-nparcelas','emp-obs'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('emp-sistema').value='price';document.getElementById('emp-inicio').value=today();document.getElementById('emp-diavenc').value='10';
+  document.getElementById('emp-preview').style.display='none';document.getElementById('modal-emp-titulo').textContent='Novo Contrato';
+  document.getElementById('emp-pessoa').innerHTML='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+  openModal('modal-contrato');
+}
+function previewParcelas() {
+  const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),s=document.getElementById('emp-sistema').value,n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,dv=parseInt(document.getElementById('emp-diavenc').value);
+  if(!v||!t||!n||!ini){toast('Preencha os campos','error');return;}
+  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,dv,n);
+  document.getElementById('emp-preview-table').innerHTML=c.map((p,i)=>`<tr><td>${p.numero}</td><td>${fmtData(vs[i])}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');
+  document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
+  document.getElementById('emp-preview').style.display='block';
+}
+async function salvarContrato() {
+  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),s=document.getElementById('emp-sistema').value,n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,dv=parseInt(document.getElementById('emp-diavenc').value);
+  if(!pid||!v||!t||!n||!ini||!dv){toast('Preencha todos os campos','error');return;}
+  const eid=genId();
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:s,numParcelas:n,dataInicio:ini,diaVencimento:dv,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
+  const insertedEmp = await dbInsert('emprestimos',empRecord);
+  const actualEid = insertedEmp.id || eid;
+
+  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,dv,n);
+  const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
+  await dbBulkInsert('parcelas',parcRecords);
+  closeModal('modal-contrato');toast('Contrato criado!');renderContratos();
+}
+async function renderContratos() {
+  const es=await dbSelect('emprestimos'),cl=await dbSelect('clientes'),ap=await dbSelect('parcelas'),cfg=await getConfig(),f=document.getElementById('emp-filtro-status')?.value||'all',h=today();
+  // Update statuses
+  for(const e of es){
+    if(e.status==='quitado'||e.status==='renegociado')continue;
+    const ps=ap.filter(p=>p.emprestimoId===e.id);
+    let newStatus;
+    if(ps.every(p=>p.status==='paga')) newStatus='quitado';
+    else if(ps.some(p=>p.status==='pendente'&&p.dataVencimento<h)) newStatus='atrasado';
+    else newStatus='ativo';
+    if(e.status!==newStatus){e.status=newStatus;await dbUpdate('emprestimos',e.id,{status:newStatus});}
+  }
+  const fil=f==='all'?es:es.filter(e=>e.status===f),tb=document.getElementById('contratos-table'),em=document.getElementById('contratos-empty');
+  if(!fil.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=fil.map(e=>{const p=cl.find(x=>x.id===e.pessoaId),ps=ap.filter(x=>x.emprestimoId===e.id),pg=ps.filter(x=>x.status==='paga').length,pct=ps.length?Math.round(pg/ps.length*100):0;
+    const stm={ativo:'badge-accent',quitado:'badge-success',atrasado:'badge-danger',renegociado:'badge-warning'};const fc=pct>=100?'green':pct>=50?'yellow':'red';
+    const risco=calcRiscoLocalSync(e.id,ap);
+    return `<tr style="cursor:pointer;" onclick="verContrato('${e.id}')"><td>${p?esc(p.nome):'?'}</td><td>${moeda(e.valor)}</td><td>${fmtPct(e.taxaJuros)}/mês</td><td>${pg}/${e.numParcelas}</td><td>${fmtData(e.dataInicio)}</td><td><span class="badge ${stm[e.status]||'badge-info'}">${e.status}</span></td><td style="min-width:80px;"><div class="progress-bar"><div class="fill ${fc}" style="width:${pct}%"></div></div></td><td>${risco}</td><td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();verContrato('${e.id}')">Ver</button></td></tr>`;}).join('');
+}
+
+// RISCO LOCAL (scoring rápido)
+function calcRiscoLocalSync(eid, allParcelas) {
+  const ps=(allParcelas||[]).filter(p=>p.emprestimoId===eid),h=today();
+  const total=ps.length,pagas=ps.filter(p=>p.status==='paga').length,atr=ps.filter(p=>p.status==='pendente'&&p.dataVencimento<h).length;
+  if(!total) return '<span class="badge badge-info">-</span>';
+  const score = Math.min(100, atr*25 + (total-pagas>6?10:0));
+  if(score<=20) return '<span class="badge badge-success">Baixo</span>';
+  if(score<=50) return '<span class="badge badge-warning">Médio</span>';
+  return '<span class="badge badge-danger">Alto</span>';
+}
+
+// DETALHE CONTRATO
+let currentEmpId=null;
+async function verContrato(eid) {
+  currentEmpId=eid;const es=await dbSelect('emprestimos'),e=es.find(x=>x.id===eid);if(!e)return;
+  const cl=await dbSelect('clientes'),p=cl.find(x=>x.id===e.pessoaId);
+  const ps=(await dbSelect('parcelas')).filter(x=>x.emprestimoId===eid);
+  const pgs=(await dbSelect('pagamentos')).filter(x=>x.emprestimoId===eid);
+  const h=today(),cfg=await getConfig();
+  document.getElementById('emp-detalhe-titulo').textContent=`Contrato - ${p?p.nome:'?'}`;
+  document.getElementById('emp-detalhe-sistema').textContent=e.sistema.toUpperCase();
+  document.getElementById('btn-renegociar').style.display=e.status==='quitado'?'none':'';
+  document.getElementById('ai-risk-result').style.display='none';
+  const tp=ps.reduce((s,x)=>s+x.valorTotal,0),tpg=ps.reduce((s,x)=>s+(x.valorPago||0),0),sd=tp-tpg;
+  const mc=ps.filter(x=>x.status==='pendente'&&x.dataVencimento<h).reduce((s,x)=>s+calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg),0);
+  document.getElementById('emp-detalhe-stats').innerHTML=`
+    <div class="stat-card accent"><div class="label">Valor Emprestado</div><div class="value">${moeda(e.valor)}</div></div>
+    <div class="stat-card"><div class="label">Total Previsto</div><div class="value">${moeda(tp)}</div></div>
+    <div class="stat-card success"><div class="label">Total Pago</div><div class="value">${moeda(tpg)}</div></div>
+    <div class="stat-card ${sd>0?'warning':'success'}"><div class="label">Saldo Devedor</div><div class="value">${moeda(sd)}</div></div>
+    ${mc>0?`<div class="stat-card danger"><div class="label">Mora Acumulada</div><div class="value">${moeda(mc)}</div></div>`:''}`;
+  document.getElementById('parcelas-table').innerHTML=ps.map(x=>{const at=x.status==='pendente'&&x.dataVencimento<h,mr=at?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):(x.jurosMora||0);return `<tr><td>${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorPrincipal)}</td><td>${moeda(x.valorJuros)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${x.valorPago?moeda(x.valorPago):'-'}</td><td><span class="badge ${x.status==='paga'?'badge-success':at?'badge-danger':'badge-info'}">${x.status==='paga'?'Paga':at?'Atrasada':'Pendente'}</span></td><td>${x.status!=='paga'?`<button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${eid}')">Pagar</button>`:''}</td></tr>`;}).join('');
+  document.getElementById('pagamentos-hist-table').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).map(pg=>{const pc=ps.find(x=>x.id===pg.parcelaId);return `<tr><td>${fmtData(pg.data)}</td><td>${pc?'#'+pc.numero:'-'}</td><td>${moeda(pg.valor)}</td><td><span class="badge badge-info">${pg.tipo}</span></td><td>${esc(pg.obs||'-')}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhum pagamento</td></tr>';
+  navigateToPage('contrato-detalhe');
+}
+
+// ================================================
+// PAGAMENTOS
+// ================================================
+async function abrirPagamento(pid,eid) {
+  const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);if(!p)return;
+  const h=today(),cfg=await getConfig(),at=p.status==='pendente'&&p.dataVencimento<h,mr=at?calcMoraSync(p.dataVencimento,null,p.valorTotal,cfg):0;
+  document.getElementById('pag-parcela-id').value=pid;document.getElementById('pag-emprestimo-id').value=eid;
+  document.getElementById('pag-info-parcela').textContent='#'+p.numero;document.getElementById('pag-info-valor').textContent=moeda(p.valorTotal);
+  document.getElementById('pag-info-venc').textContent=fmtData(p.dataVencimento);document.getElementById('pag-info-mora').textContent=mr>0?moeda(mr):'Sem mora';
+  document.getElementById('pag-valor').value=(p.valorTotal+mr-(p.valorPago||0)).toFixed(2);document.getElementById('pag-data').value=h;
+  document.getElementById('pag-tipo').value='total';document.getElementById('pag-obs').value='';openModal('modal-pagamento');
+}
+async function salvarPagamento() {
+  const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=parseFloat(document.getElementById('pag-valor').value),d=document.getElementById('pag-data').value,t=document.getElementById('pag-tipo').value;
+  if(!v||!d){toast('Preencha valor e data','error');return;}
+  const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);if(!p)return;
+  const cfg=await getConfig();
+  const mr=p.dataVencimento<d?calcMoraSync(p.dataVencimento,d,p.valorTotal,cfg):0;
+  const newValorPago=(p.valorPago||0)+v;
+  const newStatus=(t==='total'||newValorPago>=p.valorTotal)?'paga':p.status;
+  await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
+  const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:document.getElementById('pag-obs').value.trim()};
+  await dbInsert('pagamentos',pagRecord);
+  closeModal('modal-pagamento');toast('Pagamento registrado!');verContrato(eid);
+}
+async function gerarRecibo() {
+  const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=document.getElementById('pag-valor').value,d=document.getElementById('pag-data').value;
+  const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);
+  const es=await dbSelect('emprestimos'),e=es.find(x=>x.id===eid);
+  const cls=await dbSelect('clientes'),cl=e?cls.find(x=>x.id===e.pessoaId):null;
+  document.getElementById('recibo-print').innerHTML=`<h2 style="text-align:center;">RECIBO DE PAGAMENTO</h2><table><tr><td><strong>Cliente:</strong></td><td>${cl?esc(cl.nome):'-'}</td></tr><tr><td><strong>CPF:</strong></td><td>${cl?esc(cl.cpf||'-'):'-'}</td></tr><tr><td><strong>Parcela:</strong></td><td>#${p?p.numero:'-'} de ${e?e.numParcelas:'-'}</td></tr><tr><td><strong>Valor Parcela:</strong></td><td>${p?moeda(p.valorTotal):'-'}</td></tr><tr><td><strong>Valor Pago:</strong></td><td>${moeda(v)}</td></tr><tr><td><strong>Data:</strong></td><td>${fmtData(d)}</td></tr></table><div style="display:flex;justify-content:space-around;margin-top:80px;"><div style="text-align:center;border-top:1px solid #000;width:200px;padding-top:8px;">Credor</div><div style="text-align:center;border-top:1px solid #000;width:200px;padding-top:8px;">Devedor</div></div>`;
+  window.print();
+}
+
+// ================================================
+// RENEGOCIAÇÃO
+// ================================================
+async function openRenegociarModal() {
+  if(!currentEmpId)return;const es=await dbSelect('emprestimos'),e=es.find(x=>x.id===currentEmpId);if(!e)return;
+  const ps=(await dbSelect('parcelas')).filter(p=>p.emprestimoId===currentEmpId),h=today(),cfg=await getConfig();
+  const tp=ps.reduce((s,x)=>s+(x.valorPago||0),0),tt=ps.reduce((s,x)=>s+x.valorTotal,0),sd=tt-tp;
+  const mc=ps.filter(x=>x.status==='pendente'&&x.dataVencimento<h).reduce((s,x)=>s+calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg),0);
+  document.getElementById('reneg-emp-id').value=currentEmpId;document.getElementById('reneg-saldo').textContent=moeda(sd+mc);
+  document.getElementById('reneg-valor').value=(sd+mc).toFixed(2);document.getElementById('reneg-taxa').value=e.taxaJuros;
+  document.getElementById('reneg-parcelas').value=e.numParcelas;document.getElementById('reneg-sistema').value=e.sistema;
+  document.getElementById('reneg-inicio').value=h;document.getElementById('reneg-obs').value='';openModal('modal-renegociar');
+}
+async function salvarRenegociacao() {
+  const oid=document.getElementById('reneg-emp-id').value,v=parseFloat(document.getElementById('reneg-valor').value),t=parseFloat(document.getElementById('reneg-taxa').value),n=parseInt(document.getElementById('reneg-parcelas').value),s=document.getElementById('reneg-sistema').value,ini=document.getElementById('reneg-inicio').value;
+  if(!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
+  const es=await dbSelect('emprestimos'),oe=es.find(x=>x.id===oid);if(!oe)return;
+  await dbUpdate('emprestimos',oid,{status:'renegociado'});
+  const nid=genId();
+  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:s,numParcelas:n,dataInicio:ini,diaVencimento:oe.diaVencimento,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
+  const insertedEmp=await dbInsert('emprestimos',newEmp);
+  const actualNid=insertedEmp.id||nid;
+  const c=calcParcelas(v,t,s,n),vs=gerarVencimentos(ini,oe.diaVencimento,n);
+  const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualNid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
+  await dbBulkInsert('parcelas',parcRecords);
+  closeModal('modal-renegociar');toast('Renegociado!');verContrato(actualNid);
+}
+
+// ================================================
+// CHEQUES
+// ================================================
+async function openChequeModal(id) {
+  const cl=await dbSelect('clientes');['cheque-id','cheque-numero','cheque-banco','cheque-agencia','cheque-valor','cheque-obs'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('cheque-emissao').value=today();document.getElementById('cheque-bompara').value='';
+  document.getElementById('cheque-cliente').innerHTML='<option value="">Selecione...</option>'+cl.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  document.getElementById('cheque-contrato').innerHTML='<option value="">Nenhum</option>';
+  if(id){const chs=await dbSelect('cheques');const ch=chs.find(x=>x.id===id);if(ch){document.getElementById('modal-cheque-titulo').textContent='Editar Cheque';document.getElementById('cheque-id').value=ch.id;document.getElementById('cheque-cliente').value=ch.clienteId;document.getElementById('cheque-contrato').value=ch.contratoId||'';document.getElementById('cheque-numero').value=ch.numero;document.getElementById('cheque-banco').value=ch.banco||'';document.getElementById('cheque-agencia').value=ch.agencia||'';document.getElementById('cheque-valor').value=ch.valor;document.getElementById('cheque-emissao').value=ch.emissao||'';document.getElementById('cheque-bompara').value=ch.bomPara;document.getElementById('cheque-obs').value=ch.obs||'';}}
+  else document.getElementById('modal-cheque-titulo').textContent='Novo Cheque';
+  openModal('modal-cheque');
+}
+async function salvarCheque() {
+  const cid=document.getElementById('cheque-cliente').value,num=document.getElementById('cheque-numero').value.trim(),val=parseFloat(document.getElementById('cheque-valor').value),bp=document.getElementById('cheque-bompara').value;
+  if(!cid||!num||!val||!bp){toast('Preencha os campos obrigatórios','error');return;}
+  const id=document.getElementById('cheque-id').value;
+  const d={clienteId:cid,contratoId:document.getElementById('cheque-contrato').value,numero:num,banco:document.getElementById('cheque-banco').value.trim(),agencia:document.getElementById('cheque-agencia').value.trim(),valor:val,emissao:document.getElementById('cheque-emissao').value,bomPara:bp,obs:document.getElementById('cheque-obs').value.trim(),status:'pendente'};
+  if(id){await dbUpdate('cheques',id,d);toast('Cheque atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('cheques',d);toast('Cheque registrado!');}
+  closeModal('modal-cheque');renderCheques();
+}
+async function chequeAction(id,action) {
+  await dbUpdate('cheques',id,{status:action});
+  toast(`Cheque ${action}!`);renderCheques();if(document.getElementById('page-receber-cheque').classList.contains('active'))renderReceberCheque();
+}
+async function renderCheques() {
+  const chs=await dbSelect('cheques'),cl=await dbSelect('clientes'),f=document.getElementById('cheque-filtro')?.value||'all';
+  const fil=f==='all'?chs:chs.filter(x=>x.status===f),tb=document.getElementById('cheques-table'),em=document.getElementById('cheques-empty');
+  if(!fil.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const stm={pendente:'badge-warning',compensado:'badge-success',devolvido:'badge-danger'};
+  tb.innerHTML=fil.map(ch=>{const c=cl.find(x=>x.id===ch.clienteId);return `<tr><td>${c?esc(c.nome):'-'}</td><td>${esc(ch.numero)}</td><td>${esc(ch.banco||'-')}</td><td>${moeda(ch.valor)}</td><td>${fmtData(ch.emissao)}</td><td>${fmtData(ch.bomPara)}</td><td><span class="badge ${stm[ch.status]||'badge-info'}">${ch.status}</span></td><td>${ch.status==='pendente'?`<button class="btn btn-sm btn-success" onclick="chequeAction('${ch.id}','compensado')">Compensar</button> <button class="btn btn-sm btn-danger" onclick="chequeAction('${ch.id}','devolvido')">Devolver</button>`:`<button class="btn-icon" onclick="openChequeModal('${ch.id}')">&#9998;</button>`}</td></tr>`;}).join('');
+}
+
+// ================================================
+// RECEBER PARCELA
+// ================================================
+let recParTab='vencidas';
+function setRecParTab(t){recParTab=t;document.querySelectorAll('#page-receber-parcela .tab-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderReceberParcela();}
+async function renderReceberParcela() {
+  const allPs=await dbSelect('parcelas'),ps=allPs.filter(x=>x.status==='pendente'),es=await dbSelect('emprestimos'),cl=await dbSelect('clientes'),h=today(),cfg=await getConfig(),s=(document.getElementById('recpar-search')?.value||'').toLowerCase();
+  let fil=ps;
+  if(recParTab==='vencidas') fil=ps.filter(x=>x.dataVencimento<h);
+  else if(recParTab==='hoje') fil=ps.filter(x=>x.dataVencimento===h);
+  else if(recParTab==='proximas') fil=ps.filter(x=>x.dataVencimento>h).sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento)).slice(0,50);
+  if(s) fil=fil.filter(x=>{const e=es.find(ee=>ee.id===x.emprestimoId);const c=e?cl.find(cc=>cc.id===e.pessoaId):null;return c&&c.nome.toLowerCase().includes(s);});
+  fil.sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento));
+  document.getElementById('badge-parcelas').textContent=ps.filter(x=>x.dataVencimento<h).length;
+  document.getElementById('recpar-table').innerHTML=fil.length?fil.map(x=>{const e=es.find(ee=>ee.id===x.emprestimoId),c=e?cl.find(cc=>cc.id===e.pessoaId):null,mr=x.dataVencimento<h?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):0;
+    return `<tr><td>${c?esc(c.nome):'-'}</td><td>${moeda(e?e.valor:0)}</td><td>#${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${moeda(x.valorTotal+mr-(x.valorPago||0))}</td><td><button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${x.emprestimoId}')">Receber</button></td></tr>`;}).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma parcela</td></tr>';
+}
+
+// RECEBER CHEQUE
+async function renderReceberCheque() {
+  const chs=(await dbSelect('cheques')).filter(x=>x.status==='pendente'),cl=await dbSelect('clientes'),tb=document.getElementById('recheque-table'),em=document.getElementById('recheque-empty');
+  if(!chs.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=chs.map(ch=>{const c=cl.find(x=>x.id===ch.clienteId);return `<tr><td>${c?esc(c.nome):'-'}</td><td>${esc(ch.numero)}</td><td>${esc(ch.banco||'-')}</td><td>${moeda(ch.valor)}</td><td>${fmtData(ch.bomPara)}</td><td><button class="btn btn-sm btn-success" onclick="chequeAction('${ch.id}','compensado')">Compensar</button> <button class="btn btn-sm btn-danger" onclick="chequeAction('${ch.id}','devolvido')">Devolver</button></td></tr>`;}).join('');
+}
+
+// ================================================
+// DESPESAS
+// ================================================
+async function openDespesaModal(id) {
+  ['despesa-id','despesa-descricao','despesa-valor','despesa-obs'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('despesa-categoria').value='operacional';document.getElementById('despesa-data').value=today();
+  if(id){const ds=await dbSelect('despesas');const d=ds.find(x=>x.id===id);if(d){document.getElementById('modal-despesa-titulo').textContent='Editar Despesa';document.getElementById('despesa-id').value=d.id;document.getElementById('despesa-descricao').value=d.descricao;document.getElementById('despesa-categoria').value=d.categoria;document.getElementById('despesa-valor').value=d.valor;document.getElementById('despesa-data').value=d.data;document.getElementById('despesa-obs').value=d.obs||'';}}
+  else document.getElementById('modal-despesa-titulo').textContent='Nova Despesa';
+  openModal('modal-despesa');
+}
+async function salvarDespesa() {
+  const desc=document.getElementById('despesa-descricao').value.trim(),val=parseFloat(document.getElementById('despesa-valor').value),dt=document.getElementById('despesa-data').value;
+  if(!desc||!val||!dt){toast('Preencha os campos','error');return;}
+  const id=document.getElementById('despesa-id').value;
+  const d={descricao:desc,categoria:document.getElementById('despesa-categoria').value,valor:val,data:dt,obs:document.getElementById('despesa-obs').value.trim()};
+  if(id){await dbUpdate('despesas',id,d);toast('Despesa atualizada!');}else{d.id=genId();d.criadoEm=today();await dbInsert('despesas',d);toast('Despesa registrada!');}
+  closeModal('modal-despesa');renderDespesas();
+}
+async function excluirDespesa(id){if(!await showConfirm('Excluir despesa?'))return;await dbDelete('despesas',id);toast('Excluída!');renderDespesas();}
+async function renderDespesas() {
+  const ds=await dbSelect('despesas'),mesInput=document.getElementById('desp-mes');
+  if(!mesInput.value) mesInput.value=today().substring(0,7);
+  const mes=mesInput.value,fil=ds.filter(d=>d.data.startsWith(mes)),total=fil.reduce((s,d)=>s+d.valor,0);
+  const cats={};fil.forEach(d=>{cats[d.categoria]=(cats[d.categoria]||0)+d.valor;});
+  document.getElementById('desp-stats').innerHTML=`<div class="stat-card danger"><div class="label">Total do Mês</div><div class="value">${moeda(total)}</div></div>`+Object.entries(cats).map(([k,v])=>`<div class="stat-card"><div class="label">${k}</div><div class="value">${moeda(v)}</div></div>`).join('');
+  const tb=document.getElementById('despesas-table'),em=document.getElementById('despesas-empty');
+  if(!fil.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=fil.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`<tr><td>${fmtData(d.data)}</td><td>${esc(d.descricao)}</td><td><span class="badge badge-info">${d.categoria}</span></td><td>${moeda(d.valor)}</td><td><button class="btn-icon" onclick="openDespesaModal('${d.id}')">&#9998;</button><button class="btn-icon" onclick="excluirDespesa('${d.id}')">&#128465;</button></td></tr>`).join('');
+}
+
+// ================================================
+// CAIXA
+// ================================================
+async function renderCaixa() {
+  const mesInput=document.getElementById('caixa-mes');if(!mesInput.value)mesInput.value=today().substring(0,7);
+  const mes=mesInput.value,pgs=(await dbSelect('pagamentos')).filter(p=>p.data.startsWith(mes)),ds=(await dbSelect('despesas')).filter(d=>d.data.startsWith(mes));
+  const totalEnt=pgs.reduce((s,p)=>s+p.valor,0),totalSai=ds.reduce((s,d)=>s+d.valor,0),saldo=totalEnt-totalSai;
+  document.getElementById('caixa-stats').innerHTML=`
+    <div class="stat-card success"><div class="label">Entradas</div><div class="value">${moeda(totalEnt)}</div><div class="sub">${pgs.length} pagamento(s)</div></div>
+    <div class="stat-card danger"><div class="label">Saídas</div><div class="value">${moeda(totalSai)}</div><div class="sub">${ds.length} despesa(s)</div></div>
+    <div class="stat-card ${saldo>=0?'success':'danger'}"><div class="label">Saldo</div><div class="value">${moeda(saldo)}</div></div>`;
+  const movs=[...pgs.map(p=>({data:p.data,desc:'Pagamento recebido',tipo:'entrada',val:p.valor})),...ds.map(d=>({data:d.data,desc:d.descricao,tipo:'saida',val:d.valor}))].sort((a,b)=>a.data.localeCompare(b.data));
+  let acc=0;
+  document.getElementById('caixa-table').innerHTML=movs.map(m=>{acc+=m.tipo==='entrada'?m.val:-m.val;return `<tr><td>${fmtData(m.data)}</td><td>${esc(m.desc)}</td><td><span class="badge ${m.tipo==='entrada'?'badge-success':'badge-danger'}">${m.tipo}</span></td><td>${m.tipo==='entrada'?moeda(m.val):''}</td><td>${m.tipo==='saida'?moeda(m.val):''}</td><td>${moeda(acc)}</td></tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações</td></tr>';
+}
+
+// ================================================
+// DASHBOARD
+// ================================================
+async function renderDashboard() {
+  await loadMoedaConfig();
+  const es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),pgs=await dbSelect('pagamentos'),cl=await dbSelect('clientes'),ds=await dbSelect('despesas'),h=today(),per=document.getElementById('dash-periodo')?.value||'all';
+  let fd=null;const now=new Date();
+  if(per==='month')fd=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
+  else if(per==='quarter'){const q=Math.floor(now.getMonth()/3)*3;fd=new Date(now.getFullYear(),q,1).toISOString().split('T')[0];}
+  else if(per==='year')fd=new Date(now.getFullYear(),0,1).toISOString().split('T')[0];
+  const ef=fd?es.filter(e=>e.dataInicio>=fd):es;
+  const te=ef.reduce((s,e)=>s+e.valor,0);
+  const tr=ps.filter(p=>{const e=ef.find(x=>x.id===p.emprestimoId);return e&&p.status==='pendente';}).reduce((s,p)=>s+p.valorTotal,0);
+  const td=pgs.filter(p=>{const e=ef.find(x=>x.id===p.emprestimoId);return e&&(!fd||p.data>=fd);}).reduce((s,p)=>s+p.valor,0);
+  const ta=ps.filter(p=>{const e=ef.find(x=>x.id===p.emprestimoId);return e&&p.status==='pendente'&&p.dataVencimento<h;}).reduce((s,p)=>s+p.valorTotal,0);
+  const tdesp=ds.filter(d=>!fd||d.data>=fd).reduce((s,d)=>s+d.valor,0);
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat-card accent"><div class="label">Emprestado</div><div class="value">${moeda(te)}</div><div class="sub">${ef.length} contrato(s)</div></div>
+    <div class="stat-card warning"><div class="label">A Receber</div><div class="value">${moeda(tr)}</div></div>
+    <div class="stat-card success"><div class="label">Recebido</div><div class="value">${moeda(td)}</div></div>
+    <div class="stat-card danger"><div class="label">Em Atraso</div><div class="value">${moeda(ta)}</div></div>
+    <div class="stat-card info"><div class="label">Despesas</div><div class="value">${moeda(tdesp)}</div></div>`;
+  // Alertas
+  const atr=ps.filter(p=>p.status==='pendente'&&p.dataVencimento<h);
+  document.getElementById('dash-alerts').innerHTML=atr.length?atr.slice(0,10).map(p=>{const e=es.find(x=>x.id===p.emprestimoId),c=e?cl.find(x=>x.id===e.pessoaId):null,dias=Math.floor((new Date()-new Date(p.dataVencimento))/864e5);return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="badge badge-danger">${dias}d</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atrasada</div>';
+  // Badge
+  document.getElementById('badge-parcelas').textContent=atr.length;
+  // Próximos
+  const prox=ps.filter(p=>p.status==='pendente'&&p.dataVencimento>=h).sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento)).slice(0,10);
+  document.getElementById('dash-proximos').innerHTML=prox.length?prox.map(p=>{const e=es.find(x=>x.id===p.emprestimoId),c=e?cl.find(x=>x.id===e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="detail">${fmtData(p.dataVencimento)} | ${moeda(p.valorTotal)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum pendente</div>';
+  // Atividade
+  document.getElementById('dash-atividade').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8).map(pg=>{const e=es.find(x=>x.id===pg.emprestimoId),c=e?cl.find(x=>x.id===e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'}</span><span class="detail">${fmtData(pg.data)} | ${moeda(pg.valor)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atividade</div>';
+  renderChart(pgs);
+}
+function renderChart(pgs) {
+  const canvas=document.getElementById('chart-recebimentos');if(!canvas)return;const ctx=canvas.getContext('2d'),rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*2;canvas.height=rect.height*2;ctx.scale(2,2);const w=rect.width,h=rect.height;
+  const meses=[];const now=new Date();for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);meses.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:d.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''),valor:0});}
+  pgs.forEach(p=>{const m=meses.find(x=>x.key===p.data.substring(0,7));if(m)m.valor+=p.valor;});
+  const mx=Math.max(...meses.map(m=>m.valor),1),pad={t:20,r:20,b:40,l:60},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b,bw=cw/meses.length*0.6,gp=cw/meses.length*0.4;
+  ctx.clearRect(0,0,w,h);ctx.strokeStyle='#2e3347';ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){const y=pad.t+ch-(ch*i/4);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillStyle='#5a5f73';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(moeda(mx*i/4),pad.l-8,y+4);}
+  meses.forEach((m,i)=>{const x=pad.l+i*(bw+gp)+gp/2,bh=(m.valor/mx)*ch,y=pad.t+ch-bh;const g=ctx.createLinearGradient(x,y,x,y+bh);g.addColorStop(0,'#6c5ce7');g.addColorStop(1,'#a29bfe');ctx.fillStyle=m.valor>0?g:'#2e3347';ctx.beginPath();ctx.roundRect(x,y,bw,bh,[4,4,0,0]);ctx.fill();ctx.fillStyle='#8b90a0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(m.label,x+bw/2,h-pad.b+16);});
+}
+
+// ================================================
+// SIMULADOR
+// ================================================
+let simData={},simTab='price';
+function simular(){const v=parseFloat(document.getElementById('sim-valor').value),t=parseFloat(document.getElementById('sim-taxa').value),n=parseInt(document.getElementById('sim-parcelas').value);if(!v||!t||!n){toast('Preencha os campos','error');return;}simData={price:calcPrice(v,t,n),sac:calcSAC(v,t,n)};simTab='price';document.getElementById('sim-resultados').style.display='block';renderSimTab();}
+function showSimTab(t){simTab=t;document.querySelectorAll('#page-simulador .tab-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderSimTab();}
+function renderSimTab(){const d=simData[simTab];if(!d)return;const tj=d.reduce((s,p)=>s+p.juros,0),tg=d.reduce((s,p)=>s+p.parcela,0);document.getElementById('sim-resumo').innerHTML=`<div class="stat-card accent"><div class="label">Total Juros</div><div class="value">${moeda(tj)}</div></div><div class="stat-card"><div class="label">Total Geral</div><div class="value">${moeda(tg)}</div></div><div class="stat-card"><div class="label">1ª Parcela</div><div class="value">${moeda(d[0].parcela)}</div></div><div class="stat-card"><div class="label">Última</div><div class="value">${moeda(d[d.length-1].parcela)}</div></div>`;document.getElementById('sim-tabela').innerHTML=d.map(p=>`<tr><td>${p.numero}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');}
+
+// ================================================
+// RELATÓRIOS
+// ================================================
+async function renderRelatorios(){const cl=await dbSelect('clientes');document.getElementById('rel-pessoa').innerHTML='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');await renderRelExtrato();await renderRelFluxo();await renderRelRanking();await renderRelAtrasados();await renderRelCobradores();}
+function showRelTab(t){['extrato','fluxo','ranking','atrasados','cobradores'].forEach(x=>{document.getElementById('rel-'+x).style.display=x===t?'':'none';});document.querySelectorAll('#page-relatorios .tab-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
+async function renderRelExtrato(){const pid=document.getElementById('rel-pessoa').value,ct=document.getElementById('rel-extrato-content');if(!pid){ct.innerHTML='<p style="color:var(--text-muted);">Selecione um cliente</p>';return;}const cl=await dbSelect('clientes'),p=cl.find(x=>x.id===pid),es=(await dbSelect('emprestimos')).filter(e=>e.pessoaId===pid),pgs=await dbSelect('pagamentos');let h=`<h3 style="margin-bottom:12px;">Extrato: ${esc(p.nome)}</h3>`;if(!es.length){ct.innerHTML=h+'<p style="color:var(--text-muted);">Nenhum contrato</p>';return;}es.forEach(e=>{const pg=pgs.filter(x=>x.emprestimoId===e.id),tp=pg.reduce((s,x)=>s+x.valor,0);h+=`<div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><strong>${moeda(e.valor)} - ${e.sistema.toUpperCase()} ${fmtPct(e.taxaJuros)}/mês</strong><span class="badge ${e.status==='quitado'?'badge-success':e.status==='atrasado'?'badge-danger':'badge-accent'}">${e.status}</span></div><p style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;">Início: ${fmtData(e.dataInicio)} | Parcelas: ${e.numParcelas} | Pago: ${moeda(tp)}</p></div>`;});ct.innerHTML=h;}
+async function renderRelFluxo(){const ps=await dbSelect('parcelas'),pgs=await dbSelect('pagamentos'),ms=[];const now=new Date();for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1),k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,l=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});ms.push({l,p:ps.filter(x=>x.dataVencimento.startsWith(k)&&x.status==='pendente').reduce((s,x)=>s+x.valorTotal,0),r:pgs.filter(x=>x.data.startsWith(k)).reduce((s,x)=>s+x.valor,0)});}document.getElementById('rel-fluxo-content').innerHTML=`<table><thead><tr><th>Mês</th><th>Previsto</th><th>Recebido</th><th>Dif.</th></tr></thead><tbody>${ms.map(m=>`<tr><td>${esc(m.l)}</td><td>${moeda(m.p)}</td><td>${moeda(m.r)}</td><td style="color:${m.r>=m.p?'var(--success)':'var(--danger)'}">${moeda(m.r-m.p)}</td></tr>`).join('')}</tbody></table>`;}
+async function renderRelRanking(){const cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),rk=cl.map(c=>{const me=es.filter(e=>e.pessoaId===c.id&&e.status!=='quitado'&&e.status!=='renegociado'),sd=me.reduce((s,e)=>s+ps.filter(x=>x.emprestimoId===e.id&&x.status==='pendente').reduce((ss,x)=>ss+x.valorTotal-(x.valorPago||0),0),0);return{nome:c.nome,sd,n:me.length};}).filter(r=>r.sd>0).sort((a,b)=>b.sd-a.sd);document.getElementById('rel-ranking-content').innerHTML=rk.length?`<table><thead><tr><th>#</th><th>Nome</th><th>Contratos</th><th>Saldo</th></tr></thead><tbody>${rk.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.nome)}</td><td>${r.n}</td><td><strong>${moeda(r.sd)}</strong></td></tr>`).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum devedor</p>';}
+async function renderRelAtrasados(){const es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),cl=await dbSelect('clientes'),h=today(),at=[];es.forEach(e=>{const pp=ps.filter(p=>p.emprestimoId===e.id&&p.status==='pendente'&&p.dataVencimento<h);if(pp.length){const c=cl.find(x=>x.id===e.pessoaId);at.push({nome:c?.nome||'-',n:pp.length,t:pp.reduce((s,p)=>s+p.valorTotal,0),d:Math.max(...pp.map(p=>Math.floor((new Date()-new Date(p.dataVencimento))/864e5))),eid:e.id});}});document.getElementById('rel-atrasados-content').innerHTML=at.length?`<table><thead><tr><th>Cliente</th><th>Parc. Atrasadas</th><th>Total</th><th>Maior Atraso</th><th>Ações</th></tr></thead><tbody>${at.map(a=>`<tr><td>${esc(a.nome)}</td><td>${a.n}</td><td>${moeda(a.t)}</td><td><span class="badge badge-danger">${a.d}d</span></td><td><button class="btn btn-sm btn-ghost" onclick="verContrato('${a.eid}')">Ver</button></td></tr>`).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atrasada</p>';}
+async function renderRelCobradores(){const cobs=await dbSelect('cobradores'),cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),pgs=await dbSelect('pagamentos');document.getElementById('rel-cobradores-content').innerHTML=cobs.length?`<table><thead><tr><th>Cobrador</th><th>Clientes</th><th>Contratos Ativos</th><th>Total Recebido</th><th>Comissão Estimada</th></tr></thead><tbody>${cobs.map(c=>{const cids=cl.filter(x=>x.cobradorId===c.id).map(x=>x.id),eids=es.filter(e=>cids.includes(e.pessoaId)&&e.status==='ativo'),tr=pgs.filter(p=>eids.some(e=>e.id===p.emprestimoId)).reduce((s,p)=>s+p.valor,0);return `<tr><td>${esc(c.nome)}</td><td>${cids.length}</td><td>${eids.length}</td><td>${moeda(tr)}</td><td>${moeda(tr*(c.comissao||10)/100)}</td></tr>`;}).join('')}</tbody></table>`:'<p style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum cobrador</p>';}
+
+// ================================================
+// CONFIGURAÇÕES
+// ================================================
+async function renderConfig(){
+  const c=await getConfig(),ia=await getIAConfig();
+  document.getElementById('cfg-mora').value=c.jurosMoraPadrao||0.033;
+  document.getElementById('cfg-moeda').value=c.moeda||'BRL';
+  document.getElementById('cfg-apikey').value=ia.apiKey||'';
+  document.getElementById('cfg-modelo').value=ia.modelo||'claude-sonnet-4-6';
+  document.getElementById('cfg-c-cli').textContent=(await dbSelect('clientes')).length;
+  document.getElementById('cfg-c-emp').textContent=(await dbSelect('emprestimos')).length;
+  document.getElementById('cfg-c-pag').textContent=(await dbSelect('pagamentos')).length;
+  document.getElementById('cfg-c-chq').textContent=(await dbSelect('cheques')).length;
+  let t=0;DB_KEYS.forEach(k=>{const d=localStorage.getItem('gf_'+k);if(d)t+=d.length;});
+  document.getElementById('cfg-storage').textContent=(t/1024).toFixed(1)+' KB';
+  // Supabase status
+  document.getElementById('cfg-supa-url').value = localStorage.getItem('gf_supabase_url') || '';
+  document.getElementById('cfg-supa-key').value = localStorage.getItem('gf_supabase_key') || '';
+  document.getElementById('supa-status').innerHTML = isConnected() ? '<span style="color:var(--success);">Conectado</span>' : '<span style="color:var(--danger);">Desconectado</span>';
+}
+async function salvarConfig(){
+  if(isConnected()){
+    await setConfig('jurosMoraPadrao', parseFloat(document.getElementById('cfg-mora').value)||0.033);
+    await setConfig('moeda', document.getElementById('cfg-moeda').value||'BRL');
+  } else {
+    setDBLocal('config',{jurosMoraPadrao:parseFloat(document.getElementById('cfg-mora').value)||0.033,moeda:document.getElementById('cfg-moeda').value||'BRL'});
+  }
+  _moedaCache=null; await loadMoedaConfig();
+  toast('Configurações salvas!');
+}
+async function salvarApiConfig(){
+  if(isConnected()){
+    await setConfig('apiKey', document.getElementById('cfg-apikey').value.trim());
+    await setConfig('modelo', document.getElementById('cfg-modelo').value);
+  } else {
+    setDBLocal('iaconfig',{apiKey:document.getElementById('cfg-apikey').value.trim(),modelo:document.getElementById('cfg-modelo').value});
+  }
+  toast('Configurações IA salvas!');
+}
+async function testarApi(){const ia=await getIAConfig();if(!ia.apiKey){toast('Configure a API key primeiro','error');return;}try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ia.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:ia.modelo,max_tokens:50,messages:[{role:'user',content:'Responda apenas: OK'}]})});if(r.ok){toast('Conexão OK!');document.getElementById('ia-api-status').textContent='Conectada';document.getElementById('ia-api-status').style.color='var(--success)';}else{const e=await r.json();toast('Erro: '+(e.error?.message||r.status),'error');}}catch(e){toast('Erro de conexão: '+e.message,'error');}}
+
+// BACKUP
+async function exportarDados(){
+  const d={};
+  const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
+  for(const k of tables) d[k]=await dbSelect(k);
+  d.config=await getConfig();
+  d.iaconfig=await getIAConfig();
+  d._exportedAt=new Date().toISOString();d._version='2.0';
+  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`gestfin_backup_${today().replace(/-/g,'')}.json`;a.click();URL.revokeObjectURL(u);toast('Exportado!');
+}
+async function importarDados(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=async function(e){
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!await showConfirm('Importar? Dados atuais serão substituídos.'))return;
+      const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
+      if(isConnected()){
+        // For Supabase, delete all and re-insert
+        for(const k of tables){
+          if(d[k]&&d[k].length){
+            // Delete existing
+            const existing=await dbSelect(k);
+            for(const item of existing) await dbDelete(k,item.id);
+            // Insert new
+            await dbBulkInsert(k,d[k]);
+          }
+        }
+        if(d.config){
+          for(const [key,val] of Object.entries(d.config)){
+            await setConfig(key,val);
+          }
+        }
+        if(d.iaconfig){
+          for(const [key,val] of Object.entries(d.iaconfig)){
+            await setConfig(key,val);
+          }
+        }
+      } else {
+        // localStorage fallback
+        for(const k of tables){if(d[k])setDBLocal(k,d[k]);}
+        if(d.config)setDBLocal('config',d.config);
+        if(d.iaconfig)setDBLocal('iaconfig',d.iaconfig);
+      }
+      toast('Importado!');navigateTo('dashboard');
+    }catch(err){toast('Arquivo inválido','error');console.error(err);}
+  };r.readAsText(f);ev.target.value='';
+}
+async function confirmarLimpar(){
+  if(!await showConfirm('ATENÇÃO: Todos os dados serão apagados!'))return;
+  const tables=['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','gerentes','cobradores'];
+  if(isConnected()){
+    for(const k of tables){
+      const existing=await dbSelect(k);
+      for(const item of existing) await dbDelete(k,item.id);
+    }
+    // Clear config
+    try{await supabaseClient.from('config').delete().neq('chave','');}catch(e){}
+  }
+  DB_KEYS.forEach(k=>localStorage.removeItem('gf_'+k));
+  toast('Dados apagados!');navigateTo('dashboard');
+}
+
+// ================================================
+// IA - ANÁLISE DE RISCO
+// ================================================
+async function renderIARisco(){const ia=await getIAConfig();document.getElementById('ia-api-status').textContent=ia.apiKey?'Configurada':'Não configurada';document.getElementById('ia-api-status').style.color=ia.apiKey?'var(--success)':'var(--danger)';}
+
+async function callClaude(prompt) {
+  const ia=await getIAConfig();
+  if(!ia.apiKey) { toast('Configure a API key em Configurações','error'); return null; }
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ia.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:ia.modelo||'claude-sonnet-4-6',max_tokens:2048,messages:[{role:'user',content:prompt}]})
+    });
+    if(!r.ok){const e=await r.json();toast('Erro API: '+(e.error?.message||r.status),'error');return null;}
+    const d=await r.json();
+    return d.content[0].text;
+  } catch(e) { toast('Erro: '+e.message,'error'); return null; }
+}
+
+async function buildPortfolioContext() {
+  const cl=await dbSelect('clientes'),es=await dbSelect('emprestimos'),ps=await dbSelect('parcelas'),pgs=await dbSelect('pagamentos'),h=today();
+  let ctx = `DATA ATUAL: ${h}\n\nCLIENTES (${cl.length}):\n`;
+  cl.forEach(c => {
+    const meus = es.filter(e=>e.pessoaId===c.id);
+    const totalEmp = meus.reduce((s,e)=>s+e.valor,0);
+    const parcs = ps.filter(p=>meus.some(e=>e.id===p.emprestimoId));
+    const atrasadas = parcs.filter(p=>p.status==='pendente'&&p.dataVencimento<h).length;
+    const pagas = parcs.filter(p=>p.status==='paga').length;
+    ctx += `- ${c.nome} (CPF:${c.cpf||'?'}): ${meus.length} contrato(s), total emprestado ${totalEmp.toFixed(2)}, ${pagas} pagas, ${atrasadas} atrasada(s)\n`;
+  });
+  ctx += `\nCONTRATOS ATIVOS (${es.filter(e=>e.status==='ativo'||e.status==='atrasado').length}):\n`;
+  es.filter(e=>e.status!=='quitado'&&e.status!=='renegociado').forEach(e => {
+    const c=cl.find(x=>x.id===e.pessoaId);
+    const parcs=ps.filter(p=>p.emprestimoId===e.id);
+    const atrasadas=parcs.filter(p=>p.status==='pendente'&&p.dataVencimento<h);
+    const totalPago=parcs.reduce((s,p)=>s+(p.valorPago||0),0);
+    const totalPrev=parcs.reduce((s,p)=>s+p.valorTotal,0);
+    ctx += `- Contrato ${(e.id||'').toString().substr(0,6)}: ${c?c.nome:'?'}, R$${e.valor.toFixed(2)}, ${e.taxaJuros}%/mês (${e.sistema}), ${e.numParcelas} parcelas, ${atrasadas.length} atrasada(s), pago ${totalPago.toFixed(2)} de ${totalPrev.toFixed(2)}, status: ${e.status}\n`;
+  });
+  return ctx;
+}
+
+async function analisarRiscoContrato() {
+  if(!currentEmpId)return;
+  const es=await dbSelect('emprestimos'),e=es.find(x=>x.id===currentEmpId);if(!e)return;
+  const cl=await dbSelect('clientes'),c=cl.find(x=>x.id===e.pessoaId);
+  const ps=(await dbSelect('parcelas')).filter(p=>p.emprestimoId===currentEmpId),h=today();
+  const atrasadas=ps.filter(p=>p.status==='pendente'&&p.dataVencimento<h);
+  const pagas=ps.filter(p=>p.status==='paga');
+  const totalPago=ps.reduce((s,p)=>s+(p.valorPago||0),0);
+  const totalPrev=ps.reduce((s,p)=>s+p.valorTotal,0);
+
+  const prompt = `Você é um analista de risco de crédito. Analise este empréstimo pessoal e dê uma avaliação de risco (BAIXO, MÉDIO ou ALTO) com justificativas e recomendações.
+
+DADOS DO CONTRATO:
+- Cliente: ${c?c.nome:'Desconhecido'}
+- Valor emprestado: R$ ${e.valor.toFixed(2)}
+- Taxa de juros: ${e.taxaJuros}% ao mês (${e.sistema.toUpperCase()})
+- Parcelas: ${e.numParcelas} (${pagas.length} pagas, ${atrasadas.length} atrasadas, ${ps.length-pagas.length-atrasadas.length} pendentes)
+- Total previsto: R$ ${totalPrev.toFixed(2)}
+- Total já pago: R$ ${totalPago.toFixed(2)}
+- Início: ${e.dataInicio}
+- Status: ${e.status}
+${atrasadas.length?`- Maior atraso: ${Math.max(...atrasadas.map(p=>Math.floor((new Date()-new Date(p.dataVencimento))/864e5)))} dias`:''}
+
+Responda em PT-BR com:
+1. NÍVEL DE RISCO (BAIXO/MÉDIO/ALTO) e score 0-100
+2. Fatores positivos
+3. Fatores de risco
+4. Recomendações de ação
+Seja conciso e direto.`;
+
+  const div=document.getElementById('ai-risk-result');
+  div.style.display='block';
+  div.innerHTML='<div class="ai-msg loading">Analisando com IA...</div>';
+
+  const resp=await callClaude(prompt);
+  if(resp) div.innerHTML=`<div class="card-header"><h3>Análise de Risco - IA</h3></div><div class="ai-msg assistant" style="white-space:pre-wrap;">${esc(resp)}</div>`;
+  else div.style.display='none';
+}
+
+async function analisarRiscoTodos() {
+  const ctx=await buildPortfolioContext();
+  const prompt=`Você é um analista de risco de crédito. Analise esta carteira de empréstimos pessoais e forneça:
+
+1. RESUMO GERAL da saúde da carteira
+2. TOP 3 contratos de MAIOR RISCO (com justificativa)
+3. TOP 3 clientes mais CONFIÁVEIS
+4. RECOMENDAÇÕES gerais para reduzir inadimplência
+5. Score geral da carteira (0-100)
+
+${ctx}
+
+Responda em PT-BR de forma concisa e objetiva.`;
+
+  const div=document.getElementById('ia-batch-results');
+  div.innerHTML='<div class="ai-msg loading">Analisando carteira completa...</div>';
+
+  const resp=await callClaude(prompt);
+  if(resp) div.innerHTML=`<div class="ai-msg assistant" style="white-space:pre-wrap;">${esc(resp)}</div>`;
+  else div.innerHTML='';
+}
+
+async function enviarMsgIA() {
+  const input=document.getElementById('ai-input'),msg=input.value.trim();if(!msg)return;input.value='';
+  const msgs=document.getElementById('ai-messages');
+  msgs.innerHTML+=`<div class="ai-msg user">${esc(msg)}</div><div class="ai-msg loading" id="ai-loading">Pensando...</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+
+  const ctx=await buildPortfolioContext();
+  const prompt=`Você é um consultor financeiro especializado em empréstimos pessoais. Use os dados abaixo para responder à pergunta do usuário.
+
+${ctx}
+
+PERGUNTA: ${msg}
+
+Responda em PT-BR de forma concisa.`;
+
+  const resp=await callClaude(prompt);
+  const loading=document.getElementById('ai-loading');if(loading)loading.remove();
+  if(resp) msgs.innerHTML+=`<div class="ai-msg assistant" style="white-space:pre-wrap;">${esc(resp)}</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ================================================
+// INIT
+// ================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  // Migrate old data if exists
+  const oldCl=localStorage.getItem('gestfin_pessoas');
+  if(oldCl&&!localStorage.getItem('gf_clientes')){
+    try{setDBLocal('clientes',JSON.parse(oldCl));}catch{}
+    try{setDBLocal('emprestimos',JSON.parse(localStorage.getItem('gestfin_emprestimos'))||[]);}catch{}
+    try{setDBLocal('parcelas',JSON.parse(localStorage.getItem('gestfin_parcelas'))||[]);}catch{}
+    try{setDBLocal('pagamentos',JSON.parse(localStorage.getItem('gestfin_pagamentos'))||[]);}catch{}
+    try{setDBLocal('config',JSON.parse(localStorage.getItem('gestfin_config'))||defaultDB('config'));}catch{}
+  }
+  initSupabase();
+  await loadMoedaConfig();
+  await renderDashboard();
+});
+</script>
+</body>
+</html>
