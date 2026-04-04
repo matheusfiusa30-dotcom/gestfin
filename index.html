@@ -1859,8 +1859,6 @@ async function salvarContrato() {
   renderContratos();
 
   // Mostrar modal de sucesso com opção WhatsApp
-  const cl=await dbSelect('clientes');
-  const cliente=cl.find(x=>x.id===pid);
   const primParcela=c[0];
   const freqLabel={semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
   showContratoWhatsApp(cliente, actualEid, v, primParcela.parcela, n, vs[0], freqLabel);
