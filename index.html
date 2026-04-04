@@ -3626,18 +3626,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (appBooted) return;
     appBooted = true;
     currentUser = user;
-    showApp();
-    initCalendar();
-    updateSidebarUser();
-    // Small delay to let auth token settle before making DB queries
-    await new Promise(r => setTimeout(r, 300));
-    // Load profile and data in PARALLEL
+    // Load profile and data in PARALLEL before showing the app
     try {
       await Promise.all([
         loadProfile().catch(e => console.error('Profile error:', e)),
         preloadAll().catch(e => console.error('Preload error:', e))
       ]);
     } catch(e) { console.error('Boot error:', e); }
+    showApp();
+    initCalendar();
+    updateSidebarUser();
     updateSidebarPlan();
     try {
       if (isMobile()) {
