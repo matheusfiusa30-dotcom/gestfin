@@ -1247,10 +1247,13 @@ const COL_MAP = {
 
 function toSnake(table, obj) {
   const map = COL_MAP[table] || {};
+  const uuidFields = ['cobrador_id','gerente_id','pessoa_id','emprestimo_id','parcela_id','contrato_id','renegociado_de'];
   const result = {};
   for (const [k,v] of Object.entries(obj)) {
-    if (k === 'id') continue; // Let Supabase generate UUID
-    result[map[k] || k] = v;
+    if (k === 'id') continue;
+    const snakeKey = map[k] || k;
+    // Convert empty strings to null for UUID fields
+    result[snakeKey] = (v === '' && uuidFields.includes(snakeKey)) ? null : v;
   }
   return result;
 }
@@ -1641,7 +1644,8 @@ async function salvarCliente() {
   if(!validarCPF(cpfVal)){toast('CPF inválido','error');return;}
   if(!telVal||telVal.replace(/\D/g,'').length<10){toast('Telefone é obrigatório (mín. 10 dígitos)','error');return;}
   const id=document.getElementById('cliente-id').value;
-  const d={nome,cpf:document.getElementById('cliente-cpf').value.trim(),telefone:document.getElementById('cliente-tel').value.trim(),email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:document.getElementById('cliente-cobrador').value,obs:document.getElementById('cliente-obs').value.trim()};
+  const cobVal=document.getElementById('cliente-cobrador').value;
+  const d={nome,cpf:cpfVal,telefone:telVal,email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:cobVal||null,obs:document.getElementById('cliente-obs').value.trim()};
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
   closeModal('modal-cliente');renderClientes();
 }
