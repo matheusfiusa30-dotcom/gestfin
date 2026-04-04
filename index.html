@@ -807,6 +807,18 @@ table td { font-size: 0.85rem; }
     </div>
   </div>
 
+  <div style="padding:0 16px;">
+    <div class="calendar" id="mobile-calendar">
+      <div class="calendar-header">
+        <div class="calendar-nav"><button onclick="calendarPrev();renderMobileCalendar()">&larr;</button></div>
+        <h3 id="mobile-calendar-title"></h3>
+        <div class="calendar-nav"><button onclick="calendarNext();renderMobileCalendar()">&rarr;</button><button onclick="calendarToday();renderMobileCalendar()">Hoje</button></div>
+      </div>
+      <div class="calendar-grid" id="mobile-calendar-grid"></div>
+      <div class="calendar-events" id="mobile-calendar-events"></div>
+    </div>
+  </div>
+
   <div class="mobile-apps-grid">
     <div class="mobile-app-icon" onclick="mobileNav('contratos')">
       <div class="icon-box icon-green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
@@ -839,18 +851,6 @@ table td { font-size: 0.85rem; }
     <div class="mobile-app-icon" onclick="mobileNav('config')">
       <div class="icon-box icon-gray"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
       <span>Config</span>
-    </div>
-  </div>
-
-  <div style="padding:0 16px;">
-    <div class="calendar" id="mobile-calendar">
-      <div class="calendar-header">
-        <div class="calendar-nav"><button onclick="calendarPrev();renderMobileCalendar()">&larr;</button></div>
-        <h3 id="mobile-calendar-title"></h3>
-        <div class="calendar-nav"><button onclick="calendarNext();renderMobileCalendar()">&rarr;</button><button onclick="calendarToday();renderMobileCalendar()">Hoje</button></div>
-      </div>
-      <div class="calendar-grid" id="mobile-calendar-grid"></div>
-      <div class="calendar-events" id="mobile-calendar-events"></div>
     </div>
   </div>
 
