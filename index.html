@@ -1856,12 +1856,14 @@ async function salvarContrato() {
   closeModal('modal-contrato');
   toast('Contrato criado!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
-  renderContratos();
+  await renderContratos();
 
-  // Mostrar modal de sucesso com opção WhatsApp
+  // Mostrar modal WhatsApp após 300ms (esperar modal contrato fechar)
   const primParcela=c[0];
   const freqLabel={semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
-  showContratoWhatsApp(cliente, actualEid, v, primParcela.parcela, n, vs[0], freqLabel);
+  setTimeout(()=>{
+    showContratoWhatsApp(cliente, actualEid, v, primParcela.parcela, n, vs[0], freqLabel);
+  }, 300);
 }
 
 function showContratoWhatsApp(cliente, contratoId, valor, valorParcela, numParcelas, primVenc, freqLabel) {
