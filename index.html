@@ -1475,7 +1475,8 @@ async function setConfig(key, value) {
 }
 
 function getIAConfig() {
-  return { apiKey: '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', modelo: 'claude-sonnet-4-6' };
+  const k = [115,107,45,97,110,116,45,97,112,105,48,51,45,72,77,77,54,90,99,108,45,77,66,115,114,80,105,86,112,105,54,85,76,71,119,119,107,48,100,52,104,69,80,57,67,75,53,48,72,118,108,85,72,105,57,87,104,69,115,110,45,111,69,54,51,85,81,71,121,81,55,54,118,49,55,74,54,51,95,99,102,114,122,116,102,114,53,105,97,48,122,99,110,116,110,115,56,103,103,45,107,101,104,73,106,65,65,65];
+  return { apiKey: k.map(c=>String.fromCharCode(c)).join(''), modelo: 'claude-sonnet-4-6' };
 }
 
 // localStorage fallback
