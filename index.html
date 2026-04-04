@@ -1880,6 +1880,90 @@ Qualquer dúvida estou à disposição!`;
     </div>`;
   openModal('modal-whatsapp');
 }
+
+async function cobrarWhatsApp(clienteId, parcelaId, emprestimoId, diasAtraso) {
+  const cl=await dbSelect('clientes'), cliente=cl.find(x=>x.id===clienteId);
+  const ps=await dbSelect('parcelas'), p=ps.find(x=>x.id===parcelaId);
+  const es=await dbSelect('emprestimos'), emp=es.find(x=>x.id===emprestimoId);
+  if(!cliente||!p) return;
+  const cfg=await getConfig();
+  const mr=calcMoraSync(p.dataVencimento,null,p.valorTotal,cfg);
+  const totalDevido=p.valorTotal+mr-(p.valorPago||0);
+  const nome=cliente.nome.split(' ')[0];
+  const tel=(cliente.telefone||'').replace(/\D/g,'');
+
+  const msg=`Olá ${nome}, tudo bem? 😊
+
+Passando para lembrar que há uma parcela pendente no seu contrato.
+
+📋 *Detalhes:*
+• Parcela: *#${p.numero}*
+• Valor da Parcela: *${moeda(p.valorTotal)}*
+• Vencimento: *${fmtData(p.dataVencimento)}*
+• Dias em atraso: *${diasAtraso} dia(s)*
+${mr>0?'• Juros de mora: *'+moeda(mr)+'*\n':''}• *Total a pagar: ${moeda(totalDevido)}*
+
+Por favor, entre em contato para regularizar. Estou à disposição! 🙏`;
+
+  const whatsUrl=`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  document.getElementById('whatsapp-modal-content').innerHTML=`
+    <div style="text-align:center;margin-bottom:16px;">
+      <svg fill="#25D366" viewBox="0 0 24 24" style="width:48px;height:48px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      <h3 style="margin-top:8px;color:var(--danger);">Cobrar Parcela Atrasada</h3>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px;">Enviar lembrete de cobrança via WhatsApp?</p>
+    </div>
+    <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;font-size:0.8rem;color:var(--text-secondary);white-space:pre-line;max-height:200px;overflow-y:auto;margin-bottom:16px;line-height:1.5;">${esc(msg)}</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-whatsapp')" style="flex:1;">Fechar</button>
+      <a href="${whatsUrl}" target="_blank" class="btn" style="flex:1;background:#25D366;color:#fff;text-align:center;justify-content:center;text-decoration:none;" onclick="closeModal('modal-whatsapp')">Cobrar via WhatsApp</a>
+    </div>`;
+  openModal('modal-whatsapp');
+}
+
+function showPagamentoWhatsApp(cliente, parcela, valorPago, dataPag, quitada) {
+  if(!cliente) return;
+  const nome=cliente.nome.split(' ')[0];
+  const tel=(cliente.telefone||'').replace(/\D/g,'');
+
+  const msg=quitada
+    ? `Olá ${nome}! 😊
+
+Confirmamos o recebimento do pagamento da sua parcela.
+
+✅ *Pagamento Confirmado:*
+• Parcela: *#${parcela.numero}*
+• Valor Pago: *${moeda(valorPago)}*
+• Data: *${fmtData(dataPag)}*
+• Status: *QUITADA* ✅
+
+Obrigado pela pontualidade! 🙏`
+    : `Olá ${nome}! 😊
+
+Confirmamos o recebimento de um pagamento parcial.
+
+💰 *Pagamento Registrado:*
+• Parcela: *#${parcela.numero}*
+• Valor Pago: *${moeda(valorPago)}*
+• Data: *${fmtData(dataPag)}*
+• Valor Restante: *${moeda(parcela.valorTotal-(parcela.valorPago||0)-valorPago)}*
+
+Qualquer dúvida estou à disposição!`;
+
+  const whatsUrl=`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  document.getElementById('whatsapp-modal-content').innerHTML=`
+    <div style="text-align:center;margin-bottom:16px;">
+      <svg fill="#25D366" viewBox="0 0 24 24" style="width:48px;height:48px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      <h3 style="margin-top:8px;color:var(--success);">${quitada?'Parcela Quitada!':'Pagamento Registrado!'}</h3>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px;">Enviar confirmação ao cliente via WhatsApp?</p>
+    </div>
+    <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;font-size:0.8rem;color:var(--text-secondary);white-space:pre-line;max-height:200px;overflow-y:auto;margin-bottom:16px;line-height:1.5;">${esc(msg)}</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-whatsapp')" style="flex:1;">Fechar</button>
+      <a href="${whatsUrl}" target="_blank" class="btn" style="flex:1;background:#25D366;color:#fff;text-align:center;justify-content:center;text-decoration:none;" onclick="closeModal('modal-whatsapp')">Enviar WhatsApp</a>
+    </div>`;
+  openModal('modal-whatsapp');
+}
+
 async function renderContratos() {
   const es=await dbSelect('emprestimos'),cl=await dbSelect('clientes'),ap=await dbSelect('parcelas'),cfg=await getConfig(),f=document.getElementById('emp-filtro-status')?.value||'all',h=today();
   // Update statuses
@@ -1961,7 +2045,17 @@ async function salvarPagamento() {
   await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
   const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:document.getElementById('pag-obs').value.trim()};
   await dbInsert('pagamentos',pagRecord);
-  closeModal('modal-pagamento');toast('Pagamento registrado!');verContrato(eid);
+  invalidateCache('parcelas');invalidateCache('pagamentos');
+  closeModal('modal-pagamento');toast('Pagamento registrado!');
+
+  // WhatsApp: confirmar quitação da parcela
+  const es=await dbSelect('emprestimos'),emp=es.find(x=>x.id===eid);
+  const cls=await dbSelect('clientes'),cliente=emp?cls.find(x=>x.id===emp.pessoaId):null;
+  setTimeout(()=>{
+    showPagamentoWhatsApp(cliente, p, v, d, newStatus==='paga');
+  }, 300);
+
+  verContrato(eid);
 }
 async function gerarRecibo() {
   const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=document.getElementById('pag-valor').value,d=document.getElementById('pag-data').value;
@@ -2047,7 +2141,9 @@ async function renderReceberParcela() {
   fil.sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento));
   document.getElementById('badge-parcelas').textContent=ps.filter(x=>x.dataVencimento<h).length;
   document.getElementById('recpar-table').innerHTML=fil.length?fil.map(x=>{const e=es.find(ee=>ee.id===x.emprestimoId),c=e?cl.find(cc=>cc.id===e.pessoaId):null,mr=x.dataVencimento<h?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):0;
-    return `<tr><td>${c?esc(c.nome):'-'}</td><td>${moeda(e?e.valor:0)}</td><td>#${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${moeda(x.valorTotal+mr-(x.valorPago||0))}</td><td><button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${x.emprestimoId}')">Receber</button></td></tr>`;}).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma parcela</td></tr>';
+    const diasAtraso=x.dataVencimento<h?Math.floor((new Date()-new Date(x.dataVencimento))/864e5):0;
+    const cobrarBtn=diasAtraso>0?`<button class="btn btn-sm" style="background:#25D366;color:#fff;margin-left:4px;" onclick="event.stopPropagation();cobrarWhatsApp('${c?c.id:''}','${x.id}','${x.emprestimoId}',${diasAtraso})">Cobrar</button>`:'';
+    return `<tr><td>${c?esc(c.nome):'-'}</td><td>${moeda(e?e.valor:0)}</td><td>#${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${moeda(x.valorTotal+mr-(x.valorPago||0))}</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${x.emprestimoId}')">Receber</button>${cobrarBtn}</td></tr>`;}).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma parcela</td></tr>';
 }
 
 // RECEBER CHEQUE
