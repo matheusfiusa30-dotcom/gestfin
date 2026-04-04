@@ -871,7 +871,7 @@ table td { font-size: 0.85rem; }
   </div>
   <div class="page-header"><h2>IA - Análise de Risco</h2></div>
   <div class="stats-grid">
-    <div class="stat-card info"><div class="label">Modelo</div><div class="value" style="font-size:1rem;">Claude API</div><div class="sub">Anthropic</div></div>
+    <div class="stat-card info"><div class="label">Modelo</div><div class="value" style="font-size:1rem;">Gemini 2.0 Flash</div><div class="sub">Google AI</div></div>
     <div class="stat-card" id="ia-status-card"><div class="label">Status da API</div><div class="value" style="font-size:1rem;" id="ia-api-status">Não configurada</div><div class="sub">Configure em Configurações</div></div>
   </div>
   <div class="card">
@@ -1475,8 +1475,8 @@ async function setConfig(key, value) {
 }
 
 function getIAConfig() {
-  const k = [115,107,45,97,110,116,45,97,112,105,48,51,45,72,77,77,54,90,99,108,45,77,66,115,114,80,105,86,112,105,54,85,76,71,119,119,107,48,100,52,104,69,80,57,67,75,53,48,72,118,108,85,72,105,57,87,104,69,115,110,45,111,69,54,51,85,81,71,121,81,55,54,118,49,55,74,54,51,95,99,102,114,122,116,102,114,53,105,97,48,122,99,110,116,110,115,56,103,103,45,107,101,104,73,106,65,65,65];
-  return { apiKey: k.map(c=>String.fromCharCode(c)).join(''), modelo: 'claude-sonnet-4-6' };
+  const k = [65,73,122,97,83,121,67,107,69,119,116,105,56,101,121,81,112,89,79,114,90,106,73,56,51,75,97,105,85,86,101,70,90,98,55,79,49,89,77];
+  return { apiKey: k.map(c=>String.fromCharCode(c)).join(''), modelo: 'gemini-2.0-flash' };
 }
 
 // localStorage fallback
@@ -2425,19 +2425,20 @@ function showWhatsAppModal(title, titleColor, msg, whatsUrl) {
 // ================================================
 // IA - ANÁLISE DE RISCO
 // ================================================
-async function renderIARisco(){document.getElementById('ia-api-status').textContent='Conectada';document.getElementById('ia-api-status').style.color='var(--success)';}
+async function renderIARisco(){document.getElementById('ia-api-status').textContent='Conectada (Gemini)';document.getElementById('ia-api-status').style.color='var(--success)';}
 
 async function callClaude(prompt) {
   const ia=getIAConfig();
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${ia.modelo}:generateContent?key=${ia.apiKey}`;
+    const r = await fetch(url, {
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':ia.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:ia.modelo||'claude-sonnet-4-6',max_tokens:2048,messages:[{role:'user',content:prompt}]})
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:2048,temperature:0.7}})
     });
     if(!r.ok){const e=await r.json();toast('Erro API: '+(e.error?.message||r.status),'error');return null;}
     const d=await r.json();
-    return d.content[0].text;
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || null;
   } catch(e) { toast('Erro: '+e.message,'error'); return null; }
 }
 
