@@ -1716,6 +1716,8 @@ async function openClienteModal(id) {
 async function excluirClienteDoModal() {
   const id=document.getElementById('cliente-id').value;
   if(!id) return;
+  const es=await dbSelect('emprestimos');
+  if(es.some(e=>e.pessoaId===id)){toast('Não é possível excluir: cliente possui contrato(s) registrado(s)','error');return;}
   if(!await showConfirm('Excluir este cliente?')) return;
   await dbDelete('clientes',id);
   closeModal('modal-cliente');
@@ -1740,7 +1742,7 @@ async function salvarCliente() {
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
   closeModal('modal-cliente');renderClientes();
 }
-async function excluirCliente(id){if(!await showConfirm('Excluir este cliente?'))return;await dbDelete('clientes',id);toast('Excluído!');renderClientes();}
+async function excluirCliente(id){const es=await dbSelect('emprestimos');if(es.some(e=>e.pessoaId===id)){toast('Não é possível excluir: cliente possui contrato(s) registrado(s)','error');return;}if(!await showConfirm('Excluir este cliente?'))return;await dbDelete('clientes',id);toast('Excluído!');invalidateCache('clientes');renderClientes();}
 async function getClienteStatus(cid, es, ps) {
   const h=today();
   const myEs=es.filter(e=>e.pessoaId===cid);
