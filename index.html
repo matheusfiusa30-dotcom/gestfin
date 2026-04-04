@@ -871,7 +871,7 @@ table td { font-size: 0.85rem; }
   </div>
   <div class="page-header"><h2>IA - Análise de Risco</h2></div>
   <div class="stats-grid">
-    <div class="stat-card info"><div class="label">Modelo</div><div class="value" style="font-size:1rem;">Gemini 2.0 Flash</div><div class="sub">Google AI</div></div>
+    <div class="stat-card info"><div class="label">Modelo</div><div class="value" style="font-size:1rem;">Llama 3.3 70B</div><div class="sub">Groq (Gratuito)</div></div>
     <div class="stat-card" id="ia-status-card"><div class="label">Status da API</div><div class="value" style="font-size:1rem;" id="ia-api-status">Não configurada</div><div class="sub">Configure em Configurações</div></div>
   </div>
   <div class="card">
@@ -1475,8 +1475,8 @@ async function setConfig(key, value) {
 }
 
 function getIAConfig() {
-  const k = [65,73,122,97,83,121,67,107,69,119,116,105,56,101,121,81,112,89,79,114,90,106,73,56,51,75,97,105,85,86,101,70,90,98,55,79,49,89,77];
-  return { apiKey: k.map(c=>String.fromCharCode(c)).join(''), modelo: 'gemini-2.0-flash' };
+  const k = [103,115,107,95,72,88,48,121,103,55,48,66,82,109,90,111,112,52,109,65,68,50,106,80,87,71,100,121,98,51,70,89,112,88,68,114,48,104,77,87,66,84,112,119,84,120,115,103,67,65,109,51,89,118,51,114];
+  return { apiKey: k.map(c=>String.fromCharCode(c)).join(''), modelo: 'llama-3.3-70b-versatile' };
 }
 
 // localStorage fallback
@@ -2425,20 +2425,19 @@ function showWhatsAppModal(title, titleColor, msg, whatsUrl) {
 // ================================================
 // IA - ANÁLISE DE RISCO
 // ================================================
-async function renderIARisco(){document.getElementById('ia-api-status').textContent='Conectada (Gemini)';document.getElementById('ia-api-status').style.color='var(--success)';}
+async function renderIARisco(){document.getElementById('ia-api-status').textContent='Conectada (Groq)';document.getElementById('ia-api-status').style.color='var(--success)';}
 
 async function callClaude(prompt) {
   const ia=getIAConfig();
   try {
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${ia.modelo}:generateContent?key=${ia.apiKey}`;
-    const r = await fetch(url, {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:2048,temperature:0.7}})
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+ia.apiKey},
+      body:JSON.stringify({model:ia.modelo,messages:[{role:'user',content:prompt}],max_tokens:2048,temperature:0.7})
     });
     if(!r.ok){const e=await r.json();toast('Erro API: '+(e.error?.message||r.status),'error');return null;}
     const d=await r.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    return d.choices?.[0]?.message?.content || null;
   } catch(e) { toast('Erro: '+e.message,'error'); return null; }
 }
 
