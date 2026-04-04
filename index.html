@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2e7d32">
 <title>GestFin - Gestão de Empréstimos Pessoais</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -274,17 +278,118 @@ table td { font-size: 0.85rem; }
 
 /* MOBILE */
 .mobile-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 150; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; color: var(--text-primary); }
+/* ===== MOBILE APP EXPERIENCE ===== */
 @media (max-width: 768px) {
-  .mobile-toggle { display: flex; }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; padding: 16px; padding-top: 56px; }
+  .sidebar { display: none !important; }
+  .mobile-toggle { display: none !important; }
+  .main { margin-left: 0; padding: 0; padding-bottom: 80px; }
+  .page { padding: 16px; }
+  .page-header { padding-top: 8px; }
+  .page-header h2 { font-size: 1.3rem; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .modal { width: 95%; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { padding: 14px; }
+  .stat-card .value { font-size: 1.3rem; }
+  .modal { width: 95%; max-height: 85vh; }
   .dash-grid-lower, .dash-grid-bottom { grid-template-columns: 1fr !important; }
+  .calendar { padding: 14px; margin-bottom: 12px; }
+  .calendar-day { padding: 8px 2px; min-height: 38px; font-size: 0.8rem; }
+
+  /* MOBILE HOME SCREEN */
+  .mobile-home { display: block !important; }
+  .mobile-home .mobile-header {
+    background: var(--sidebar-bg);
+    padding: 24px 20px 20px;
+    border-radius: 0 0 24px 24px;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .mobile-home .mobile-header h1 { font-size: 1.5rem; font-weight: 700; }
+  .mobile-home .mobile-header .greeting { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+  .mobile-home .mobile-header .balance-row {
+    display: flex; justify-content: space-between; margin-top: 16px; gap: 8px;
+  }
+  .mobile-home .mobile-header .balance-item {
+    flex: 1; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 12px; text-align: center;
+  }
+  .mobile-home .mobile-header .balance-item .bl { font-size: 0.65rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mobile-home .mobile-header .balance-item .bv { font-size: 1.1rem; font-weight: 700; margin-top: 4px; }
+
+  .mobile-apps-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 0 16px; margin-bottom: 20px;
+  }
+  .mobile-app-icon {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-app-icon .icon-box {
+    width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.15s ease;
+  }
+  .mobile-app-icon:active .icon-box { transform: scale(0.9); }
+  .mobile-app-icon .icon-box svg { width: 26px; height: 26px; color: #fff; }
+  .mobile-app-icon span { font-size: 0.65rem; color: var(--text-secondary); text-align: center; font-weight: 500; line-height: 1.2; }
+
+  .mobile-app-icon .icon-green { background: linear-gradient(135deg, #43a047, #2e7d32); }
+  .mobile-app-icon .icon-blue { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+  .mobile-app-icon .icon-orange { background: linear-gradient(135deg, #fb8c00, #ef6c00); }
+  .mobile-app-icon .icon-red { background: linear-gradient(135deg, #e53935, #c62828); }
+  .mobile-app-icon .icon-purple { background: linear-gradient(135deg, #7e57c2, #5e35b1); }
+  .mobile-app-icon .icon-teal { background: linear-gradient(135deg, #00897b, #00695c); }
+  .mobile-app-icon .icon-pink { background: linear-gradient(135deg, #d81b60, #ad1457); }
+  .mobile-app-icon .icon-gray { background: linear-gradient(135deg, #546e7a, #37474f); }
+
+  .mobile-section-title {
+    font-size: 0.85rem; font-weight: 600; color: var(--text-primary); padding: 0 16px; margin-bottom: 10px;
+  }
+  .mobile-quick-list { padding: 0 16px; margin-bottom: 20px; }
+  .mobile-quick-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px; cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .mobile-quick-item:active { transform: scale(0.98); }
+  .mobile-quick-item .mq-left { display: flex; align-items: center; gap: 10px; }
+  .mobile-quick-item .mq-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mobile-quick-item .mq-name { font-size: 0.85rem; font-weight: 500; }
+  .mobile-quick-item .mq-sub { font-size: 0.7rem; color: var(--text-muted); }
+  .mobile-quick-item .mq-value { font-size: 0.85rem; font-weight: 600; }
+
+  /* BOTTOM NAV BAR */
+  .mobile-bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg-card); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 200;
+    backdrop-filter: blur(10px);
+  }
+  .mobile-bottom-nav .bnav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 12px; cursor: pointer; color: var(--text-muted);
+    transition: color var(--transition); -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .mobile-bottom-nav .bnav-item.active { color: var(--accent); }
+  .mobile-bottom-nav .bnav-item svg { width: 22px; height: 22px; }
+  .mobile-bottom-nav .bnav-item span { font-size: 0.6rem; font-weight: 500; }
+  .mobile-bottom-nav .bnav-badge {
+    position: absolute; top: 0; right: 4px; background: var(--danger); color: #fff;
+    font-size: 0.55rem; padding: 1px 5px; border-radius: 8px; font-weight: 700;
+  }
 }
-@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) and (display-mode: standalone) {
+  .mobile-home .mobile-header { padding-top: 48px; }
+}
+@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+/* Hide mobile elements on desktop */
+.mobile-home { display: none; }
+.mobile-bottom-nav { display: none; }
+@media (min-width: 769px) {
+  .mobile-home { display: none !important; }
+  .mobile-bottom-nav { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -690,7 +795,86 @@ table td { font-size: 0.85rem; }
 </section>
 
 
+<!-- MOBILE HOME SCREEN -->
+<section class="page mobile-home" id="page-mobile-home">
+  <div class="mobile-header">
+    <h1>GestFin</h1>
+    <div class="greeting" id="mobile-greeting">Bom dia!</div>
+    <div class="balance-row" id="mobile-balances">
+      <div class="balance-item"><div class="bl">Emprestado</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">A Receber</div><div class="bv" id="mob-receber">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">Recebido</div><div class="bv" id="mob-recebido">R$ 0</div></div>
+    </div>
+  </div>
+
+  <div class="mobile-apps-grid">
+    <div class="mobile-app-icon" onclick="mobileNav('contratos')">
+      <div class="icon-box icon-green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+      <span>Contratos</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('receber-parcela')">
+      <div class="icon-box icon-orange"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg></div>
+      <span>Receber</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('clientes')">
+      <div class="icon-box icon-blue"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></div>
+      <span>Clientes</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('cheques')">
+      <div class="icon-box icon-purple"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 15h4M14 15h4M6 11h12"/></svg></div>
+      <span>Cheques</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('despesas')">
+      <div class="icon-box icon-red"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" transform="rotate(180 12 12)"/><line x1="5" y1="21" x2="19" y2="21"/></svg></div>
+      <span>Despesas</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('cobradores')">
+      <div class="icon-box icon-teal"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 11l-3 3-3-3"/></svg></div>
+      <span>Cobradores</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('caixa')">
+      <div class="icon-box icon-pink"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M8 15h2M14 15h2"/></svg></div>
+      <span>Caixa</span>
+    </div>
+    <div class="mobile-app-icon" onclick="mobileNav('config')">
+      <div class="icon-box icon-gray"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+      <span>Config</span>
+    </div>
+  </div>
+
+  <div class="mobile-section-title">Próximos Vencimentos</div>
+  <div class="mobile-quick-list" id="mobile-proximos"></div>
+
+  <div class="mobile-section-title">Atividade Recente</div>
+  <div class="mobile-quick-list" id="mobile-atividade"></div>
+</section>
+
 </main>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  <div class="bnav-item active" onclick="mobileNav('mobile-home')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+    <span>Início</span>
+  </div>
+  <div class="bnav-item" onclick="mobileNav('contratos')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <span>Contratos</span>
+  </div>
+  <div class="bnav-item" onclick="mobileNav('receber-parcela')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+    <span>Receber</span>
+    <div class="bnav-badge" id="mob-badge-parcelas">0</div>
+  </div>
+  <div class="bnav-item" onclick="mobileNav('clientes')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    <span>Clientes</span>
+  </div>
+  <div class="bnav-item" onclick="mobileNav('dashboard')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    <span>Mais</span>
+  </div>
+</nav>
 
 <!-- ===== MODAIS ===== -->
 
@@ -1089,6 +1273,88 @@ function loadTheme() {
   document.documentElement.setAttribute('data-theme', saved);
   const label = document.getElementById('theme-label');
   if (label) label.textContent = saved === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+}
+
+// MOBILE NAVIGATION
+function isMobile() { return window.innerWidth <= 768; }
+
+function mobileNav(page) {
+  // Show page
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+
+  // Update bottom nav active state
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  const navMap = {'mobile-home':0, 'contratos':1, 'receber-parcela':2, 'clientes':3};
+  const idx = navMap[page];
+  const bnav = document.querySelectorAll('.bnav-item');
+  if (idx !== undefined && bnav[idx]) bnav[idx].classList.add('active');
+  else if (bnav[4]) bnav[4].classList.add('active'); // "Mais"
+
+  // Also update sidebar nav for consistency
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+
+  // Render page
+  const renders = {dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco,'mobile-home':renderMobileHome};
+  if (renders[page]) renders[page]();
+
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
+
+async function renderMobileHome() {
+  // Greeting
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Bom dia!' : h < 18 ? 'Boa tarde!' : 'Boa noite!';
+  document.getElementById('mobile-greeting').textContent = greet;
+
+  // Balances
+  const es = await dbSelect('emprestimos');
+  const ps = await dbSelect('parcelas');
+  const pgs = await dbSelect('pagamentos');
+  const cl = await dbSelect('clientes');
+  const hoje = today();
+
+  const totalEmp = es.reduce((s,e) => s + Number(e.valor||0), 0);
+  const totalReceber = ps.filter(p => p.status === 'pendente').reduce((s,p) => s + Number(p.valorTotal||0), 0);
+  const totalRecebido = pgs.reduce((s,p) => s + Number(p.valor||0), 0);
+
+  document.getElementById('mob-emprestado').textContent = moeda(totalEmp);
+  document.getElementById('mob-receber').textContent = moeda(totalReceber);
+  document.getElementById('mob-recebido').textContent = moeda(totalRecebido);
+
+  // Badge
+  const atrasadas = ps.filter(p => p.status === 'pendente' && p.dataVencimento < hoje).length;
+  const badge = document.getElementById('mob-badge-parcelas');
+  if (badge) { badge.textContent = atrasadas; badge.style.display = atrasadas > 0 ? '' : 'none'; }
+
+  // Próximos vencimentos
+  const prox = ps.filter(p => p.status === 'pendente' && p.dataVencimento >= hoje)
+    .sort((a,b) => a.dataVencimento.localeCompare(b.dataVencimento)).slice(0, 5);
+  document.getElementById('mobile-proximos').innerHTML = prox.length ?
+    prox.map(p => {
+      const e = es.find(x => x.id === p.emprestimoId);
+      const c = e ? cl.find(x => x.id === e.pessoaId) : null;
+      return `<div class="mobile-quick-item" onclick="mobileNav('receber-parcela')">
+        <div class="mq-left"><div class="mq-dot" style="background:var(--info);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">Parcela #${p.numero} - ${fmtData(p.dataVencimento)}</div></div></div>
+        <div class="mq-value">${moeda(p.valorTotal)}</div>
+      </div>`;
+    }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhum vencimento</div>';
+
+  // Atividade recente
+  const recentes = pgs.sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+  document.getElementById('mobile-atividade').innerHTML = recentes.length ?
+    recentes.map(pg => {
+      const e = es.find(x => x.id === pg.emprestimoId);
+      const c = e ? cl.find(x => x.id === e.pessoaId) : null;
+      return `<div class="mobile-quick-item">
+        <div class="mq-left"><div class="mq-dot" style="background:var(--success);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">${fmtData(pg.data)}</div></div></div>
+        <div class="mq-value" style="color:var(--success);">${moeda(pg.valor)}</div>
+      </div>`;
+    }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade</div>';
 }
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -1797,7 +2063,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSupabase();
   initCalendar();
   await preloadAll();
-  await renderDashboard();
+  if (isMobile()) {
+    await renderMobileHome();
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-mobile-home').classList.add('active');
+  } else {
+    await renderDashboard();
+  }
 });
 </script>
 </body>
