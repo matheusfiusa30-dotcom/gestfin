@@ -1060,7 +1060,10 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Cidade</label><input class="form-control" id="cliente-cidade"></div>
         <div class="form-group"><label>UF</label><input class="form-control" id="cliente-uf" maxlength="2" style="text-transform:uppercase;"></div>
       </div>
-      <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Limite de Crédito *</label><input class="form-control" type="number" id="cliente-limite" step="0.01" min="0" placeholder="Ex: 10000"></div>
+        <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
+      </div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
     </div>
     <div class="modal-footer" style="justify-content:space-between;">
@@ -1265,7 +1268,7 @@ function isConnected() { return supabaseClient !== null; }
 
 // Column name mapping (JS camelCase -> SQL snake_case)
 const COL_MAP = {
-  clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', criadoEm:'criado_em' },
+  clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', limiteCredito:'limite_credito', criadoEm:'criado_em' },
   emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
   pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
@@ -1682,7 +1685,7 @@ function gerarVencimentos(dataInicio, frequencia, nParcelas) {
 // ================================================
 async function openClienteModal(id) {
   document.getElementById('cliente-id').value='';
-  ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-cep','cliente-rua','cliente-num','cliente-compl','cliente-bairro','cliente-cidade','cliente-uf','cliente-obs'].forEach(x=>document.getElementById(x).value='');
+  ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-cep','cliente-rua','cliente-num','cliente-compl','cliente-bairro','cliente-cidade','cliente-uf','cliente-limite','cliente-obs'].forEach(x=>document.getElementById(x).value='');
   const fb=document.getElementById('cep-feedback'); if(fb) fb.innerHTML='&nbsp;';
   const fb2=document.getElementById('cpf-feedback'); if(fb2) fb2.innerHTML='&nbsp;';
   document.getElementById('cliente-cpf').style.borderColor='';
@@ -1707,6 +1710,7 @@ async function openClienteModal(id) {
     if(parts[4]) document.getElementById('cliente-cidade').value=parts[4];
     if(parts[5]) document.getElementById('cliente-uf').value=parts[5];
     document.getElementById('cliente-cobrador').value=p.cobradorId||'';
+    document.getElementById('cliente-limite').value=p.limiteCredito||'';
     document.getElementById('cliente-obs').value=p.obs||'';
     document.getElementById('btn-excluir-cliente').style.display='';
   }}
@@ -1733,12 +1737,14 @@ async function salvarCliente() {
   if(!cpfVal){toast('CPF é obrigatório','error');return;}
   if(!validarCPF(cpfVal)){toast('CPF inválido','error');return;}
   if(!telVal||telVal.replace(/\D/g,'').length<10){toast('Telefone é obrigatório (mín. 10 dígitos)','error');return;}
+  const limiteVal=parseFloat(document.getElementById('cliente-limite').value);
+  if(!limiteVal||limiteVal<=0){toast('Limite de crédito é obrigatório','error');return;}
   const id=document.getElementById('cliente-id').value;
   const cobVal=document.getElementById('cliente-cobrador').value;
   const endParts=[document.getElementById('cliente-rua').value.trim(),document.getElementById('cliente-num').value.trim(),document.getElementById('cliente-compl').value.trim(),document.getElementById('cliente-bairro').value.trim(),document.getElementById('cliente-cidade').value.trim(),document.getElementById('cliente-uf').value.trim().toUpperCase()].filter(Boolean);
   const cepVal=document.getElementById('cliente-cep').value.trim();
   const endereco=(endParts.join(', ')+(cepVal?' - CEP: '+cepVal:'')).trim();
-  const d={nome,cpf:cpfVal,telefone:telVal,email:document.getElementById('cliente-email').value.trim(),endereco,cobradorId:cobVal||null,obs:document.getElementById('cliente-obs').value.trim()};
+  const d={nome,cpf:cpfVal,telefone:telVal,email:document.getElementById('cliente-email').value.trim(),endereco,limiteCredito:limiteVal,cobradorId:cobVal||null,obs:document.getElementById('cliente-obs').value.trim()};
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
   closeModal('modal-cliente');renderClientes();
 }
@@ -1826,6 +1832,19 @@ function previewParcelas() {
 async function salvarContrato() {
   const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value;
   if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
+  // Validar limite de crédito
+  const cl=await dbSelect('clientes');
+  const cliente=cl.find(x=>x.id===pid);
+  if(cliente && cliente.limiteCredito){
+    const es=await dbSelect('emprestimos');
+    const contratosAtivos=es.filter(e=>e.pessoaId===pid&&(e.status==='ativo'||e.status==='atrasado'));
+    const totalUtilizado=contratosAtivos.reduce((s,e)=>s+Number(e.valor||0),0);
+    const disponivel=Number(cliente.limiteCredito)-totalUtilizado;
+    if(v>disponivel){
+      toast(`Limite de crédito excedido! Limite: ${moeda(cliente.limiteCredito)} | Utilizado: ${moeda(totalUtilizado)} | Disponível: ${moeda(Math.max(0,disponivel))}`,'error');
+      return;
+    }
+  }
   const eid=genId();
   const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
