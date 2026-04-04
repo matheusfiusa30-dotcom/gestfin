@@ -927,7 +927,7 @@ table td { font-size: 0.85rem; }
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>Mensagens WhatsApp</h3></div>
-    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:12px;">Personalize as mensagens enviadas via WhatsApp. Use as variáveis entre chaves: {nome}, {contrato}, {valor}, {parcela}, {valorParcela}, {vencimento}, {numParcelas}, {frequencia}, {diasAtraso}, {mora}, {totalDevido}, {valorPago}, {data}, {valorRestante}, {totalPago}</p>
+    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:12px;">Personalize as mensagens enviadas via WhatsApp. Use as variáveis entre chaves: {nome}, {contrato}, {valor}, {valorTotal}, {parcela}, {valorParcela}, {vencimento}, {numParcelas}, {frequencia}, {diasAtraso}, {mora}, {totalDevido}, {valorPago}, {data}, {valorRestante}, {totalPago}</p>
 
     <div class="form-group">
       <label>Novo Contrato</label>
@@ -1258,66 +1258,66 @@ table td { font-size: 0.85rem; }
 const DB_KEYS = ['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','cobradores','config','iaconfig'];
 
 const MSG_DEFAULTS = {
-  novoContrato: `Olá {nome}! Tudo bem? 😊
+  novoContrato: `👋 Olá {nome}!
 
-Seu contrato de empréstimo foi registrado com sucesso no *GestFin*.
+Seu contrato foi criado, veja os detalhes!
+📆 Data: {data}
+🔢 Nº do contrato: {contrato}
+💵 Valor: {valor}
+🔢 Nº Parcelas: {numParcelas}
+💰 Valor da Parcela: {valorParcela}
+📅 Primeiro Vencimento: {vencimento}
 
-📋 *Dados do Contrato:*
-• Nº Contrato: *#{contrato}*
-• Valor Contratado: *{valor}*
-• Valor da Parcela: *{valorParcela}*
-• Quantidade de Parcelas: *{numParcelas}x*
-• Primeiro Vencimento: *{vencimento}*
-• Frequência: *{frequencia}*
+💰 Valor Total (com juros): {valorTotal}
 
-Qualquer dúvida estou à disposição!`,
+⚠️ Efetue seus pagamentos em dia, para evitar multas e juros extras. Mantenha seu crédito em dia!`,
 
-  cobranca: `Olá {nome}, tudo bem? 😊
+  cobranca: `⚠️ Olá {nome}!
 
-Passando para lembrar que há uma parcela pendente no seu contrato.
+Identificamos uma parcela em atraso no seu contrato.
 
-📋 *Detalhes:*
-• Parcela: *#{parcela}*
-• Valor da Parcela: *{valorParcela}*
-• Vencimento: *{vencimento}*
-• Dias em atraso: *{diasAtraso} dia(s)*
-• Juros de mora: *{mora}*
-• *Total a pagar: {totalDevido}*
+📋 Detalhes:
+🔢 Parcela: #{parcela}
+💵 Valor da Parcela: {valorParcela}
+📆 Vencimento: {vencimento}
+⏰ Dias em atraso: {diasAtraso} dia(s)
+💸 Juros de mora: {mora}
+💰 Total a pagar: {totalDevido}
 
-Por favor, entre em contato para regularizar. Estou à disposição! 🙏`,
+Por favor, regularize seu pagamento para manter seu crédito em dia! 🙏`,
 
-  lembrete: `Olá {nome}! 😊
+  lembrete: `👋 Olá {nome}!
 
-Lembrete amigável: sua parcela vence em breve.
+Lembrete: sua parcela vence em breve!
 
-📋 *Detalhes:*
-• Parcela: *#{parcela}*
-• Valor: *{valorParcela}*
-• Vencimento: *{vencimento}*
+📋 Detalhes:
+🔢 Parcela: #{parcela}
+💵 Valor: {valorParcela}
+📆 Vencimento: {vencimento}
 
-Qualquer dúvida estou à disposição!`,
+⚠️ Efetue o pagamento em dia para evitar multas e juros extras!`,
 
-  quitacaoParcela: `Olá {nome}! 😊
+  quitacaoParcela: `✅ Olá {nome}!
 
-Confirmamos o recebimento do pagamento da sua parcela.
+Pagamento confirmado com sucesso!
 
-✅ *Pagamento Confirmado:*
-• Parcela: *#{parcela}*
-• Valor Pago: *{valorPago}*
-• Data: *{data}*
-• Status: *QUITADA* ✅
+📋 Detalhes:
+🔢 Parcela: #{parcela}
+💵 Valor Pago: {valorPago}
+📆 Data: {data}
+✅ Status: QUITADA
 
-Obrigado pela pontualidade! 🙏`,
+Obrigado pela pontualidade! Mantenha seu crédito em dia! 🙏`,
 
-  quitacaoContrato: `Olá {nome}! 🎉
+  quitacaoContrato: `🎉 Olá {nome}!
 
-Parabéns! Seu contrato foi *QUITADO* com sucesso!
+Parabéns! Seu contrato foi QUITADO com sucesso!
 
-🏆 *Resumo do Contrato:*
-• Nº Contrato: *#{contrato}*
-• Valor Original: *{valor}*
-• Total Pago: *{totalPago}*
-• Parcelas: *{numParcelas}x*
+🏆 Resumo:
+🔢 Nº Contrato: #{contrato}
+💵 Valor Contratado: {valor}
+💰 Total Pago: {totalPago}
+🔢 Parcelas: {numParcelas}x
 
 Contrato encerrado! Obrigado pela confiança! 🤝`
 };
@@ -1929,19 +1929,20 @@ async function salvarContrato() {
 
   // Mostrar modal WhatsApp após 300ms (esperar modal contrato fechar)
   const primParcela=c[0];
+  const valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
   const freqLabel={semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
   setTimeout(()=>{
-    showContratoWhatsApp(cliente, actualEid, v, primParcela.parcela, n, vs[0], freqLabel);
+    showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel);
   }, 300);
 }
 
-function showContratoWhatsApp(cliente, contratoId, valor, valorParcela, numParcelas, primVenc, freqLabel) {
-  const nome = cliente ? cliente.nome.split(' ')[0] : 'Cliente';
+function showContratoWhatsApp(cliente, contratoId, valor, valorTotal, valorParcela, numParcelas, primVenc, freqLabel) {
+  const nome = cliente ? cliente.nome : 'Cliente';
   const tel = cliente ? (cliente.telefone||'').replace(/\D/g,'') : '';
   const contratoNum = (contratoId||'').substring(0,8).toUpperCase();
   const msg = formatMsg(getMensagens().novoContrato, {
-    nome, contrato: contratoNum, valor: moeda(valor), valorParcela: moeda(valorParcela),
-    numParcelas, vencimento: fmtData(primVenc), frequencia: freqLabel
+    nome, contrato: contratoNum, valor: moeda(valor), valorTotal: moeda(valorTotal), valorParcela: moeda(valorParcela),
+    numParcelas, vencimento: fmtData(primVenc), frequencia: freqLabel, data: fmtData(today())
   }, 'novoContrato');
   const whatsUrl = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
   showWhatsAppModal('Contrato Criado!', 'var(--text-primary)', msg, whatsUrl);
@@ -1955,7 +1956,7 @@ async function cobrarWhatsApp(clienteId, parcelaId, emprestimoId, diasAtraso) {
   const cfg=await getConfig();
   const mr=calcMoraSync(p.dataVencimento,null,p.valorTotal,cfg);
   const totalDevido=p.valorTotal+mr-(p.valorPago||0);
-  const nome=cliente.nome.split(' ')[0];
+  const nome=cliente.nome;
   const tel=(cliente.telefone||'').replace(/\D/g,'');
   const msg=formatMsg(getMensagens().cobranca, {
     nome, parcela: p.numero, valorParcela: moeda(p.valorTotal),
@@ -1968,7 +1969,7 @@ async function cobrarWhatsApp(clienteId, parcelaId, emprestimoId, diasAtraso) {
 
 function showPagamentoWhatsApp(cliente, parcela, valorPago, dataPag, quitada) {
   if(!cliente) return;
-  const nome=cliente.nome.split(' ')[0];
+  const nome=cliente.nome;
   const tel=(cliente.telefone||'').replace(/\D/g,'');
   let msg;
   if(quitada) {
@@ -1986,7 +1987,7 @@ function showPagamentoWhatsApp(cliente, parcela, valorPago, dataPag, quitada) {
 
 function showQuitacaoContratoWhatsApp(cliente, emp, allParcelas) {
   if(!cliente) return;
-  const nome=cliente.nome.split(' ')[0];
+  const nome=cliente.nome;
   const tel=(cliente.telefone||'').replace(/\D/g,'');
   const contratoNum=(emp.id||'').substring(0,8).toUpperCase();
   const totalPago=allParcelas.reduce((s,p)=>s+(p.valorPago||0),0);
@@ -2002,7 +2003,7 @@ async function lembreteWhatsApp(clienteId, parcelaId) {
   const cl=await dbSelect('clientes'), cliente=cl.find(x=>x.id===clienteId);
   const ps=await dbSelect('parcelas'), p=ps.find(x=>x.id===parcelaId);
   if(!cliente||!p) return;
-  const nome=cliente.nome.split(' ')[0];
+  const nome=cliente.nome;
   const tel=(cliente.telefone||'').replace(/\D/g,'');
   const msg=formatMsg(getMensagens().lembrete, {
     nome, parcela: p.numero, valorParcela: moeda(p.valorTotal),
