@@ -296,7 +296,7 @@ table td { font-size: 0.85rem; }
   .calendar-day { padding: 8px 2px; min-height: 38px; font-size: 0.8rem; }
 
   /* MOBILE HOME SCREEN */
-  .mobile-home { display: block !important; }
+  /* mobile-home follows .page active/inactive like all other pages */
   .mobile-home .mobile-header {
     background: var(--sidebar-bg);
     padding: 24px 20px 20px;
@@ -370,7 +370,7 @@ table td { font-size: 0.85rem; }
   .mobile-bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--bg-card); border-top: 1px solid var(--border);
-    display: flex; justify-content: space-around; align-items: center;
+    display: flex !important; justify-content: space-around; align-items: center;
     padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 200;
     backdrop-filter: blur(10px);
@@ -477,8 +477,7 @@ table td { font-size: 0.85rem; }
 }
 @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
 /* Hide mobile elements on desktop */
-.mobile-home { display: none; }
-.mobile-bottom-nav { display: none; }
+/* mobile-only elements hidden on desktop via min-width rule below */
 @media (min-width: 769px) {
   .mobile-home { display: none !important; }
   .mobile-bottom-nav { display: none !important; }
