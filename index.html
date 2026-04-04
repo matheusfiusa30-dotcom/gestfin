@@ -1036,11 +1036,11 @@ table td { font-size: 0.85rem; }
     <div class="modal-body">
       <input type="hidden" id="cliente-id">
       <div class="form-row">
-        <div class="form-group"><label>Nome *</label><input class="form-control" id="cliente-nome"></div>
-        <div class="form-group"><label>CPF</label><input class="form-control" id="cliente-cpf" oninput="maskCPF(this)"></div>
+        <div class="form-group"><label>Nome *</label><input class="form-control" id="cliente-nome" placeholder="Nome completo"></div>
+        <div class="form-group"><label>CPF *</label><input class="form-control" id="cliente-cpf" placeholder="000.000.000-00" oninput="maskCPF(this);validarCPFVisual(this)"><small id="cpf-feedback" style="font-size:0.7rem;margin-top:4px;display:block;">&nbsp;</small></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Telefone</label><input class="form-control" id="cliente-tel" oninput="maskTel(this)"></div>
+        <div class="form-group"><label>Telefone *</label><input class="form-control" id="cliente-tel" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div>
         <div class="form-group"><label>Email</label><input class="form-control" type="email" id="cliente-email"></div>
       </div>
       <div class="form-group"><label>Endereço</label><input class="form-control" id="cliente-endereco"></div>
@@ -1391,6 +1391,30 @@ function fmtPct(v) { return Number(v||0).toFixed(2)+'%'; }
 
 // MASKS
 function maskCPF(el) { let v=el.value.replace(/\D/g,'').substr(0,11); if(v.length>9) v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4'); else if(v.length>6) v=v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3'); else if(v.length>3) v=v.replace(/(\d{3})(\d{1,3})/,'$1.$2'); el.value=v; }
+function validarCPF(cpf) {
+  cpf = cpf.replace(/\D/g,'');
+  if(cpf.length !== 11) return false;
+  if(/^(\d)\1{10}$/.test(cpf)) return false; // todos iguais
+  let soma=0, resto;
+  for(let i=1;i<=9;i++) soma += parseInt(cpf.substring(i-1,i)) * (11-i);
+  resto = (soma*10) % 11;
+  if(resto===10||resto===11) resto=0;
+  if(resto !== parseInt(cpf.substring(9,10))) return false;
+  soma=0;
+  for(let i=1;i<=10;i++) soma += parseInt(cpf.substring(i-1,i)) * (12-i);
+  resto = (soma*10) % 11;
+  if(resto===10||resto===11) resto=0;
+  if(resto !== parseInt(cpf.substring(10,11))) return false;
+  return true;
+}
+function validarCPFVisual(el) {
+  const fb = document.getElementById('cpf-feedback');
+  if(!fb) return;
+  const v = el.value.replace(/\D/g,'');
+  if(v.length < 11) { fb.innerHTML='&nbsp;'; el.style.borderColor=''; return; }
+  if(validarCPF(v)) { fb.innerHTML='<span style="color:var(--success);">CPF v\u00e1lido</span>'; el.style.borderColor='var(--success)'; }
+  else { fb.innerHTML='<span style="color:var(--danger);">CPF inv\u00e1lido</span>'; el.style.borderColor='var(--danger)'; }
+}
 function maskTel(el) { let v=el.value.replace(/\D/g,'').substr(0,11); if(v.length>6) v=v.replace(/(\d{2})(\d{4,5})(\d{1,4})/,'($1) $2-$3'); else if(v.length>2) v=v.replace(/(\d{2})(\d{1,5})/,'($1) $2'); el.value=v; }
 
 // TOAST & CONFIRM
@@ -1609,7 +1633,13 @@ async function openClienteModal(id) {
   openModal('modal-cliente');
 }
 async function salvarCliente() {
-  const nome=document.getElementById('cliente-nome').value.trim(); if(!nome){toast('Nome obrigatório','error');return;}
+  const nome=document.getElementById('cliente-nome').value.trim();
+  const cpfVal=document.getElementById('cliente-cpf').value.trim();
+  const telVal=document.getElementById('cliente-tel').value.trim();
+  if(!nome){toast('Nome é obrigatório','error');return;}
+  if(!cpfVal){toast('CPF é obrigatório','error');return;}
+  if(!validarCPF(cpfVal)){toast('CPF inválido','error');return;}
+  if(!telVal||telVal.replace(/\D/g,'').length<10){toast('Telefone é obrigatório (mín. 10 dígitos)','error');return;}
   const id=document.getElementById('cliente-id').value;
   const d={nome,cpf:document.getElementById('cliente-cpf').value.trim(),telefone:document.getElementById('cliente-tel').value.trim(),email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:document.getElementById('cliente-cobrador').value,obs:document.getElementById('cliente-obs').value.trim()};
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
