@@ -926,23 +926,6 @@ table td { font-size: 0.85rem; }
     <button class="btn btn-primary" onclick="salvarConfig()">Salvar</button>
   </div>
   <div class="card" style="margin-top:16px;">
-    <div class="card-header"><h3>API de IA (Anthropic Claude)</h3></div>
-    <div class="form-group">
-      <label>API Key</label>
-      <input class="form-control" type="password" id="cfg-apikey" placeholder="sk-ant-api...">
-    </div>
-    <div class="form-group">
-      <label>Modelo</label>
-      <select class="form-control" id="cfg-modelo">
-        <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recomendado)</option>
-        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Mais rápido)</option>
-        <option value="claude-opus-4-6">Claude Opus 4.6 (Mais capaz)</option>
-      </select>
-    </div>
-    <button class="btn btn-ai" onclick="salvarApiConfig()">Salvar Configurações IA</button>
-    <button class="btn btn-ghost" onclick="testarApi()" style="margin-left:8px;">Testar Conexão</button>
-  </div>
-  <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>Info do Sistema</h3></div>
     <div style="color:var(--text-secondary);font-size:0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
       <p>Clientes: <strong id="cfg-c-cli">0</strong></p>
@@ -1399,14 +1382,8 @@ async function setConfig(key, value) {
   } catch(e) { console.error('Config save error:', e); }
 }
 
-async function getIAConfig() {
-  if (!isConnected()) return getDBLocal('iaconfig') || {apiKey:'', modelo:'claude-sonnet-4-6'};
-  try {
-    const { data } = await supabaseClient.from('config').select('*').in('chave', ['apiKey', 'modelo']);
-    const cfg = {};
-    (data || []).forEach(r => { cfg[r.chave] = r.valor; });
-    return { apiKey: cfg.apiKey || '', modelo: cfg.modelo || 'claude-sonnet-4-6' };
-  } catch(e) { return getDBLocal('iaconfig') || {apiKey:'', modelo:'claude-sonnet-4-6'}; }
+function getIAConfig() {
+  return { apiKey: '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', modelo: 'claude-sonnet-4-6' };
 }
 
 // localStorage fallback
@@ -2194,11 +2171,9 @@ async function renderRelCobradores(){const cobs=await dbSelect('cobradores'),cl=
 // CONFIGURAÇÕES
 // ================================================
 async function renderConfig(){
-  const c=await getConfig(),ia=await getIAConfig();
+  const c=await getConfig();
   document.getElementById('cfg-mora').value=c.jurosMoraPadrao||0.033;
   document.getElementById('cfg-moeda').value=c.moeda||'BRL';
-  document.getElementById('cfg-apikey').value=ia.apiKey||'';
-  document.getElementById('cfg-modelo').value=ia.modelo||'claude-sonnet-4-6';
   document.getElementById('cfg-c-cli').textContent=(await dbSelect('clientes')).length;
   document.getElementById('cfg-c-emp').textContent=(await dbSelect('emprestimos')).length;
   document.getElementById('cfg-c-pag').textContent=(await dbSelect('pagamentos')).length;
@@ -2216,26 +2191,15 @@ async function salvarConfig(){
   _moedaCache=null; await loadMoedaConfig();
   toast('Configurações salvas!');
 }
-async function salvarApiConfig(){
-  if(isConnected()){
-    await setConfig('apiKey', document.getElementById('cfg-apikey').value.trim());
-    await setConfig('modelo', document.getElementById('cfg-modelo').value);
-  } else {
-    setDBLocal('iaconfig',{apiKey:document.getElementById('cfg-apikey').value.trim(),modelo:document.getElementById('cfg-modelo').value});
-  }
-  toast('Configurações IA salvas!');
-}
-async function testarApi(){const ia=await getIAConfig();if(!ia.apiKey){toast('Configure a API key primeiro','error');return;}try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ia.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:ia.modelo,max_tokens:50,messages:[{role:'user',content:'Responda apenas: OK'}]})});if(r.ok){toast('Conexão OK!');document.getElementById('ia-api-status').textContent='Conectada';document.getElementById('ia-api-status').style.color='var(--success)';}else{const e=await r.json();toast('Erro: '+(e.error?.message||r.status),'error');}}catch(e){toast('Erro de conexão: '+e.message,'error');}}
 
 
 // ================================================
 // IA - ANÁLISE DE RISCO
 // ================================================
-async function renderIARisco(){const ia=await getIAConfig();document.getElementById('ia-api-status').textContent=ia.apiKey?'Configurada':'Não configurada';document.getElementById('ia-api-status').style.color=ia.apiKey?'var(--success)':'var(--danger)';}
+async function renderIARisco(){document.getElementById('ia-api-status').textContent='Conectada';document.getElementById('ia-api-status').style.color='var(--success)';}
 
 async function callClaude(prompt) {
-  const ia=await getIAConfig();
-  if(!ia.apiKey) { toast('Configure a API key em Configurações','error'); return null; }
+  const ia=getIAConfig();
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
