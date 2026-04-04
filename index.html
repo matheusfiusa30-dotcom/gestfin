@@ -1063,7 +1063,13 @@ table td { font-size: 0.85rem; }
       <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar</button></div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <button class="btn btn-danger btn-sm" id="btn-excluir-cliente" style="display:none;" onclick="excluirClienteDoModal()">Excluir</button>
+      <div style="display:flex;gap:8px;margin-left:auto;">
+        <button class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarCliente()">Salvar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1695,9 +1701,20 @@ async function openClienteModal(id) {
     if(parts[5]) document.getElementById('cliente-uf').value=parts[5];
     document.getElementById('cliente-cobrador').value=p.cobradorId||'';
     document.getElementById('cliente-obs').value=p.obs||'';
+    document.getElementById('btn-excluir-cliente').style.display='';
   }}
-  else document.getElementById('modal-cliente-titulo').textContent='Novo Cliente';
+  else { document.getElementById('modal-cliente-titulo').textContent='Novo Cliente'; document.getElementById('btn-excluir-cliente').style.display='none'; }
   openModal('modal-cliente');
+}
+async function excluirClienteDoModal() {
+  const id=document.getElementById('cliente-id').value;
+  if(!id) return;
+  if(!await showConfirm('Excluir este cliente?')) return;
+  await dbDelete('clientes',id);
+  closeModal('modal-cliente');
+  toast('Cliente excluído!');
+  invalidateCache('clientes');
+  renderClientes();
 }
 async function salvarCliente() {
   const nome=document.getElementById('cliente-nome').value.trim();
@@ -1739,20 +1756,15 @@ async function renderClientes() {
     // Desktop table
     html+=`<tr><td><strong>${esc(p.nome)}</strong></td><td>${esc(p.cpf||'-')}</td><td>${esc(p.telefone||'-')}</td><td>${esc(p.email||'-')}</td><td>${cob?esc(cob.nome):'-'}</td><td><span class="badge ${st.c}">${st.l}</span></td><td style="white-space:nowrap;"><button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openClienteModal('${p.id}')" style="margin-right:4px;">Editar</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();excluirCliente('${p.id}')">Excluir</button></td></tr>`;
     // Mobile card
-    mhtml+=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <strong style="font-size:0.95rem;">${esc(p.nome)}</strong>
-        <span class="badge ${st.c}">${st.l}</span>
+    mhtml+=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;" onclick="openClienteModal('${p.id}')">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <strong style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.nome)}</strong>
+          <span class="badge ${st.c}" style="flex-shrink:0;">${st.l}</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">${esc(p.cpf||'')} &middot; ${esc(p.telefone||'')}</div>
       </div>
-      <div style="font-size:0.8rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:3px;">
-        <span>CPF: ${esc(p.cpf||'-')}</span>
-        <span>Tel: ${esc(p.telefone||'-')}</span>
-        ${p.email?'<span>Email: '+esc(p.email)+'</span>':''}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn btn-sm btn-primary" onclick="openClienteModal('${p.id}')" style="flex:1;">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="excluirCliente('${p.id}')" style="flex:1;">Excluir</button>
-      </div>
+      <svg fill="none" stroke="var(--accent)" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;margin-left:8px;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     </div>`;
   }
   tb.innerHTML=html;
