@@ -1731,7 +1731,7 @@ async function renderClientes() {
   for(const p of f){
     const st=await getClienteStatus(p.id,es,ps);
     const cob=cobs.find(c=>c.id===p.cobradorId);
-    html+=`<tr><td><strong>${esc(p.nome)}</strong></td><td>${esc(p.cpf||'-')}</td><td>${esc(p.telefone||'-')}</td><td>${esc(p.email||'-')}</td><td>${cob?esc(cob.nome):'-'}</td><td><span class="badge ${st.c}">${st.l}</span></td><td><button class="btn-icon" onclick="openClienteModal('${p.id}')" title="Editar">&#9998;</button><button class="btn-icon" onclick="excluirCliente('${p.id}')" title="Excluir">&#128465;</button></td></tr>`;
+    html+=`<tr><td><strong>${esc(p.nome)}</strong></td><td>${esc(p.cpf||'-')}</td><td>${esc(p.telefone||'-')}</td><td>${esc(p.email||'-')}</td><td>${cob?esc(cob.nome):'-'}</td><td><span class="badge ${st.c}">${st.l}</span></td><td style="white-space:nowrap;"><button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openClienteModal('${p.id}')" style="margin-right:4px;">Editar</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();excluirCliente('${p.id}')">Excluir</button></td></tr>`;
   }
   tb.innerHTML=html;
 }
