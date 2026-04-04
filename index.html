@@ -1043,7 +1043,19 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Telefone *</label><input class="form-control" id="cliente-tel" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div>
         <div class="form-group"><label>Email</label><input class="form-control" type="email" id="cliente-email"></div>
       </div>
-      <div class="form-group"><label>Endereço</label><input class="form-control" id="cliente-endereco"></div>
+      <div class="form-row">
+        <div class="form-group"><label>CEP</label><div style="display:flex;gap:6px;"><input class="form-control" id="cliente-cep" placeholder="00000-000" oninput="maskCEP(this)" maxlength="9" style="flex:1;"><button class="btn btn-ghost btn-sm" onclick="buscarCEP()" type="button" id="btn-buscar-cep">Buscar</button></div><small id="cep-feedback" style="font-size:0.7rem;margin-top:4px;display:block;">&nbsp;</small></div>
+        <div class="form-group"><label>Rua</label><input class="form-control" id="cliente-rua" placeholder="Logradouro"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Número</label><input class="form-control" id="cliente-num" placeholder="Nº"></div>
+        <div class="form-group"><label>Complemento</label><input class="form-control" id="cliente-compl" placeholder="Apto, Bloco..."></div>
+        <div class="form-group"><label>Bairro</label><input class="form-control" id="cliente-bairro"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Cidade</label><input class="form-control" id="cliente-cidade"></div>
+        <div class="form-group"><label>UF</label><input class="form-control" id="cliente-uf" maxlength="2" style="text-transform:uppercase;"></div>
+      </div>
       <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
     </div>
@@ -1419,6 +1431,30 @@ function validarCPFVisual(el) {
   else { fb.innerHTML='<span style="color:var(--danger);">CPF inv\u00e1lido</span>'; el.style.borderColor='var(--danger)'; }
 }
 function maskTel(el) { let v=el.value.replace(/\D/g,'').substr(0,11); if(v.length>6) v=v.replace(/(\d{2})(\d{4,5})(\d{1,4})/,'($1) $2-$3'); else if(v.length>2) v=v.replace(/(\d{2})(\d{1,5})/,'($1) $2'); el.value=v; }
+function maskCEP(el) { let v=el.value.replace(/\D/g,'').substr(0,8); if(v.length>5) v=v.replace(/(\d{5})(\d{1,3})/,'$1-$2'); el.value=v; if(v.replace(/\D/g,'').length===8) buscarCEP(); }
+async function buscarCEP() {
+  const cep=document.getElementById('cliente-cep').value.replace(/\D/g,'');
+  const fb=document.getElementById('cep-feedback');
+  if(cep.length!==8){if(fb) fb.innerHTML='<span style="color:var(--danger);">CEP deve ter 8 dígitos</span>';return;}
+  if(fb) fb.innerHTML='<span style="color:var(--text-muted);">Buscando...</span>';
+  document.getElementById('btn-buscar-cep').disabled=true;
+  try {
+    const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');
+    const d=await r.json();
+    if(d.erro){if(fb) fb.innerHTML='<span style="color:var(--danger);">CEP não encontrado</span>';return;}
+    document.getElementById('cliente-rua').value=d.logradouro||'';
+    document.getElementById('cliente-bairro').value=d.bairro||'';
+    document.getElementById('cliente-cidade').value=d.localidade||'';
+    document.getElementById('cliente-uf').value=d.uf||'';
+    if(fb) fb.innerHTML='<span style="color:var(--success);">Endereço encontrado!</span>';
+    // Foca no número
+    document.getElementById('cliente-num').focus();
+  } catch(e) {
+    if(fb) fb.innerHTML='<span style="color:var(--danger);">Erro ao buscar CEP</span>';
+  } finally {
+    document.getElementById('btn-buscar-cep').disabled=false;
+  }
+}
 
 // TOAST & CONFIRM
 function toast(m,t='success') { const c=document.getElementById('toast-container'), e=document.createElement('div'); e.className='toast '+t; e.textContent=m; c.appendChild(e); setTimeout(()=>e.remove(),3500); }
@@ -1628,10 +1664,34 @@ function gerarVencimentos(dataInicio, frequencia, nParcelas) {
 // CLIENTES
 // ================================================
 async function openClienteModal(id) {
-  document.getElementById('cliente-id').value=''; ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-endereco','cliente-obs'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('cliente-id').value='';
+  ['cliente-nome','cliente-cpf','cliente-tel','cliente-email','cliente-cep','cliente-rua','cliente-num','cliente-compl','cliente-bairro','cliente-cidade','cliente-uf','cliente-obs'].forEach(x=>document.getElementById(x).value='');
+  const fb=document.getElementById('cep-feedback'); if(fb) fb.innerHTML='&nbsp;';
+  const fb2=document.getElementById('cpf-feedback'); if(fb2) fb2.innerHTML='&nbsp;';
+  document.getElementById('cliente-cpf').style.borderColor='';
   const cobs=await dbSelect('cobradores');
   document.getElementById('cliente-cobrador').innerHTML='<option value="">Nenhum</option>'+cobs.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-  if(id){const cl=await dbSelect('clientes');const p=cl.find(x=>x.id===id);if(p){document.getElementById('modal-cliente-titulo').textContent='Editar Cliente';document.getElementById('cliente-id').value=p.id;document.getElementById('cliente-nome').value=p.nome;document.getElementById('cliente-cpf').value=p.cpf||'';document.getElementById('cliente-tel').value=p.telefone||'';document.getElementById('cliente-email').value=p.email||'';document.getElementById('cliente-endereco').value=p.endereco||'';document.getElementById('cliente-cobrador').value=p.cobradorId||'';document.getElementById('cliente-obs').value=p.obs||'';}}
+  if(id){const cl=await dbSelect('clientes');const p=cl.find(x=>x.id===id);if(p){
+    document.getElementById('modal-cliente-titulo').textContent='Editar Cliente';
+    document.getElementById('cliente-id').value=p.id;
+    document.getElementById('cliente-nome').value=p.nome;
+    document.getElementById('cliente-cpf').value=p.cpf||'';
+    document.getElementById('cliente-tel').value=p.telefone||'';
+    document.getElementById('cliente-email').value=p.email||'';
+    // Parse endereço salvo de volta para os campos
+    const end=p.endereco||'';
+    const cepMatch=end.match(/CEP:\s*([\d\-]+)/);
+    if(cepMatch) document.getElementById('cliente-cep').value=cepMatch[1];
+    const parts=end.replace(/\s*-\s*CEP:.*$/,'').split(',').map(s=>s.trim());
+    if(parts[0]) document.getElementById('cliente-rua').value=parts[0];
+    if(parts[1]) document.getElementById('cliente-num').value=parts[1];
+    if(parts[2]) document.getElementById('cliente-compl').value=parts[2];
+    if(parts[3]) document.getElementById('cliente-bairro').value=parts[3];
+    if(parts[4]) document.getElementById('cliente-cidade').value=parts[4];
+    if(parts[5]) document.getElementById('cliente-uf').value=parts[5];
+    document.getElementById('cliente-cobrador').value=p.cobradorId||'';
+    document.getElementById('cliente-obs').value=p.obs||'';
+  }}
   else document.getElementById('modal-cliente-titulo').textContent='Novo Cliente';
   openModal('modal-cliente');
 }
@@ -1645,7 +1705,10 @@ async function salvarCliente() {
   if(!telVal||telVal.replace(/\D/g,'').length<10){toast('Telefone é obrigatório (mín. 10 dígitos)','error');return;}
   const id=document.getElementById('cliente-id').value;
   const cobVal=document.getElementById('cliente-cobrador').value;
-  const d={nome,cpf:cpfVal,telefone:telVal,email:document.getElementById('cliente-email').value.trim(),endereco:document.getElementById('cliente-endereco').value.trim(),cobradorId:cobVal||null,obs:document.getElementById('cliente-obs').value.trim()};
+  const endParts=[document.getElementById('cliente-rua').value.trim(),document.getElementById('cliente-num').value.trim(),document.getElementById('cliente-compl').value.trim(),document.getElementById('cliente-bairro').value.trim(),document.getElementById('cliente-cidade').value.trim(),document.getElementById('cliente-uf').value.trim().toUpperCase()].filter(Boolean);
+  const cepVal=document.getElementById('cliente-cep').value.trim();
+  const endereco=(endParts.join(', ')+(cepVal?' - CEP: '+cepVal:'')).trim();
+  const d={nome,cpf:cpfVal,telefone:telVal,email:document.getElementById('cliente-email').value.trim(),endereco,cobradorId:cobVal||null,obs:document.getElementById('cliente-obs').value.trim()};
   if(id){await dbUpdate('clientes',id,d);toast('Cliente atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('clientes',d);toast('Cliente cadastrado!');}
   closeModal('modal-cliente');renderClientes();
 }
