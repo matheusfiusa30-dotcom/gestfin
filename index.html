@@ -1079,6 +1079,11 @@ table td { font-size: 0.85rem; }
 </div>
 
 <!-- ===== APP CONTAINER ===== -->
+<div id="app-loading" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg-primary);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <p style="color:var(--text-secondary);font-size:0.9rem;">Carregando seus dados...</p>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <div id="app-container" style="display:none;">
 
 <button class="mobile-toggle" onclick="toggleSidebar()">
@@ -2080,7 +2085,7 @@ function updateSidebarUser() {
 async function updateSidebarPlan() {
   if (!currentProfile) return;
   const plano = PLANOS[currentProfile.plano] || PLANOS.gratis;
-  const contratos = DB_CACHE['emprestimos'] || await dbSelect('emprestimos');
+  const contratos = await dbSelect('emprestimos');
   const ativos = contratos.filter(e => e.status === 'ativo' || e.status === 'atrasado').length;
   const max = plano.maxContratos;
   const pct = max >= 99999 ? 0 : Math.min(100, Math.round(ativos / max * 100));
@@ -2850,6 +2855,7 @@ async function salvarContrato() {
   toast('Contrato criado!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();
+  updateSidebarPlan();
 
   // Mostrar modal WhatsApp após 300ms (esperar modal contrato fechar)
   const primParcela=c[0];
@@ -3029,6 +3035,7 @@ async function salvarPagamento() {
   if(allPaid && newStatus==='paga') {
     await dbUpdate('emprestimos',eid,{status:'quitado'});
     invalidateCache('emprestimos');
+    updateSidebarPlan();
     setTimeout(()=>{ showQuitacaoContratoWhatsApp(cliente, emp, allParcelas); }, 300);
   } else {
     setTimeout(()=>{ showPagamentoWhatsApp(cliente, p, v, d, newStatus==='paga'); }, 300);
@@ -3626,13 +3633,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (appBooted) return;
     appBooted = true;
     currentUser = user;
-    // Load profile and data in PARALLEL before showing the app
+    // Show loading screen immediately
+    document.getElementById('landing-page').style.display = 'none';
+    const loadingEl = document.getElementById('app-loading');
+    loadingEl.style.display = 'flex';
+    // Load profile + essential tables in parallel
     try {
       await Promise.all([
         loadProfile().catch(e => console.error('Profile error:', e)),
-        preloadAll().catch(e => console.error('Preload error:', e))
+        dbSelect('clientes').catch(e => console.error('Clientes error:', e)),
+        dbSelect('emprestimos').catch(e => console.error('Emprestimos error:', e)),
+        dbSelect('parcelas').catch(e => console.error('Parcelas error:', e)),
+        dbSelect('pagamentos').catch(e => console.error('Pagamentos error:', e))
       ]);
     } catch(e) { console.error('Boot error:', e); }
+    // Hide loading, show app with data ready
+    loadingEl.style.display = 'none';
     showApp();
     initCalendar();
     updateSidebarUser();
@@ -3646,6 +3662,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderDashboard();
       }
     } catch(e) { console.error('Render error:', e); }
+    // Preload remaining tables in background (cheques, despesas, cobradores)
+    Promise.all([
+      dbSelect('cheques'),
+      dbSelect('despesas'),
+      dbSelect('cobradores')
+    ]).catch(e => console.error('Background preload error:', e));
   }
 
   // Set up auth listener FIRST (catches OAuth callback)
