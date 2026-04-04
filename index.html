@@ -6,7 +6,36 @@
 <title>GestFin - Gestão de Empréstimos Pessoais</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
+/* TEMA VERDE (padrão) */
+:root, [data-theme="light"] {
+  --bg-primary: #f0f5f0;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #e8f5e9;
+  --bg-input: #f5faf5;
+  --border: #c8e6c9;
+  --text-primary: #1b5e20;
+  --text-secondary: #4a7c59;
+  --text-muted: #81a88a;
+  --accent: #2e7d32;
+  --accent-light: #43a047;
+  --success: #2e7d32;
+  --warning: #f9a825;
+  --danger: #d32f2f;
+  --info: #1976d2;
+  --sidebar-w: 250px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --transition: 0.2s ease;
+  --sidebar-bg: linear-gradient(180deg, #2e7d32, #1b5e20);
+  --sidebar-text: #e8f5e9;
+  --sidebar-text-muted: #a5d6a7;
+  --sidebar-hover: rgba(255,255,255,0.1);
+  --sidebar-active: rgba(255,255,255,0.2);
+}
+/* TEMA ESCURO */
+[data-theme="dark"] {
   --bg-primary: #0f1117;
   --bg-secondary: #1a1d27;
   --bg-card: #222633;
@@ -22,11 +51,12 @@
   --warning: #fdcb6e;
   --danger: #e17055;
   --info: #74b9ff;
-  --sidebar-w: 250px;
-  --radius: 10px;
-  --radius-sm: 6px;
   --shadow: 0 4px 24px rgba(0,0,0,0.3);
-  --transition: 0.2s ease;
+  --sidebar-bg: linear-gradient(180deg, #1a1d27, #0f1117);
+  --sidebar-text: #e8eaf0;
+  --sidebar-text-muted: #5a5f73;
+  --sidebar-hover: #2a2e3d;
+  --sidebar-active: rgba(108,92,231,0.1);
 }
 html { font-size: 14px; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
@@ -36,18 +66,25 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 table { width: 100%; border-collapse: collapse; }
 
 /* SIDEBAR */
-.sidebar { width: var(--sidebar-w); background: var(--bg-secondary); border-right: 1px solid var(--border); height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); }
-.sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
-.sidebar-header h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.sidebar-header small { color: var(--text-muted); font-size: 0.75rem; }
+.sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); border-right: none; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); }
+.sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.15); text-align: center; }
+.sidebar-header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; -webkit-text-fill-color: #fff; }
+.sidebar-header small { color: var(--sidebar-text-muted); font-size: 0.75rem; }
 .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; color: var(--text-secondary); font-size: 0.9rem; transition: all var(--transition); border-left: 3px solid transparent; position: relative; }
-.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-.nav-item.active { background: rgba(108,92,231,0.1); color: var(--accent-light); border-left-color: var(--accent); }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; color: var(--sidebar-text); font-size: 0.9rem; transition: all var(--transition); border-left: 3px solid transparent; position: relative; opacity: 0.85; }
+.nav-item:hover { background: var(--sidebar-hover); opacity: 1; }
+.nav-item.active { background: var(--sidebar-active); opacity: 1; border-left-color: #fff; }
 .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
 .nav-badge { background: var(--danger); color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700; margin-left: auto; }
-.nav-sep { height: 1px; background: var(--border); margin: 8px 16px; }
-.sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); text-align: center; }
+.nav-sep { height: 1px; background: rgba(255,255,255,0.1); margin: 8px 16px; }
+.sidebar-footer { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.7rem; color: var(--sidebar-text-muted); text-align: center; }
+/* THEME TOGGLE */
+.theme-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 20px; cursor: pointer; color: var(--sidebar-text); font-size: 0.8rem; opacity: 0.7; transition: opacity var(--transition); }
+.theme-toggle:hover { opacity: 1; }
+.theme-switch { width: 36px; height: 20px; background: rgba(255,255,255,0.2); border-radius: 10px; position: relative; transition: background var(--transition); }
+.theme-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform var(--transition); }
+[data-theme="dark"] .theme-switch { background: var(--accent); }
+[data-theme="dark"] .theme-switch::after { transform: translateX(16px); }
 
 /* MAIN */
 .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; padding: 24px 32px; }
@@ -320,6 +357,10 @@ table td { font-size: 0.85rem; }
 
 
   </nav>
+  <div class="theme-toggle" onclick="toggleTheme()">
+    <div class="theme-switch"></div>
+    <span id="theme-label">Modo Escuro</span>
+  </div>
   <div class="sidebar-footer">GestFin v2.0 &copy; 2026</div>
 </aside>
 
@@ -842,6 +883,9 @@ const DB_KEYS = ['clientes','emprestimos','parcelas','pagamentos','cheques','des
 // Supabase client
 let supabaseClient = null;
 let DB_CACHE = {}; // in-memory cache
+let CACHE_TTL = 30000; // 30 seconds cache
+let CACHE_TS = {}; // timestamps
+let CACHE_LOADING = {}; // prevent duplicate requests
 
 function initSupabase() {
   const url = 'https://skbjymjwxjkzbvitlgpw.supabase.co';
@@ -891,16 +935,37 @@ function toCamel(table, obj) {
 // Generic async DB operations
 async function dbSelect(table) {
   if (!isConnected()) return getDBLocal(table);
-  try {
-    const { data, error } = await supabaseClient.from(table).select('*');
-    if (error) throw error;
-    const mapped = (data || []).map(r => toCamel(table, r));
-    DB_CACHE[table] = mapped;
-    return mapped;
-  } catch(e) {
-    console.error('DB select error:', table, e);
-    return DB_CACHE[table] || getDBLocal(table);
+  const now = Date.now();
+  // Return cache if fresh
+  if (DB_CACHE[table] && CACHE_TS[table] && (now - CACHE_TS[table]) < CACHE_TTL) {
+    return DB_CACHE[table];
   }
+  // Prevent duplicate concurrent requests
+  if (CACHE_LOADING[table]) return CACHE_LOADING[table];
+  CACHE_LOADING[table] = (async () => {
+    try {
+      const { data, error } = await supabaseClient.from(table).select('*');
+      if (error) throw error;
+      const mapped = (data || []).map(r => toCamel(table, r));
+      DB_CACHE[table] = mapped;
+      CACHE_TS[table] = Date.now();
+      return mapped;
+    } catch(e) {
+      console.error('DB select error:', table, e);
+      return DB_CACHE[table] || getDBLocal(table);
+    } finally {
+      delete CACHE_LOADING[table];
+    }
+  })();
+  return CACHE_LOADING[table];
+}
+function invalidateCache(table) { delete CACHE_TS[table]; }
+function invalidateAllCache() { CACHE_TS = {}; }
+// Preload all tables at once
+async function preloadAll() {
+  const tables = ['clientes','emprestimos','parcelas','pagamentos','cheques','despesas','cobradores'];
+  await Promise.all(tables.map(t => dbSelect(t)));
+  await loadMoedaConfig();
 }
 
 async function dbInsert(table, record) {
@@ -909,6 +974,7 @@ async function dbInsert(table, record) {
     const snake = toSnake(table, record);
     const { data, error } = await supabaseClient.from(table).insert(snake).select().single();
     if (error) throw error;
+    invalidateCache(table);
     return toCamel(table, data);
   } catch(e) { console.error('DB insert error:', e); toast('Erro ao salvar: ' + e.message, 'error'); return record; }
 }
@@ -917,10 +983,10 @@ async function dbUpdate(table, id, updates) {
   if (!isConnected()) { const arr = getDBLocal(table); const i = arr.findIndex(x=>x.id===id); if(i>=0) arr[i]={...arr[i],...updates}; setDBLocal(table,arr); return; }
   try {
     const snake = toSnake(table, updates);
-    // Re-add id fields that toSnake strips
     delete snake.id;
     const { error } = await supabaseClient.from(table).update(snake).eq('id', id);
     if (error) throw error;
+    invalidateCache(table);
   } catch(e) { console.error('DB update error:', e); }
 }
 
@@ -929,6 +995,7 @@ async function dbDelete(table, id) {
   try {
     const { error } = await supabaseClient.from(table).delete().eq('id', id);
     if (error) throw error;
+    invalidateCache(table);
   } catch(e) { console.error('DB delete error:', e); }
 }
 
@@ -938,6 +1005,7 @@ async function dbBulkInsert(table, records) {
     const snaked = records.map(r => toSnake(table, r));
     const { data, error } = await supabaseClient.from(table).insert(snaked).select();
     if (error) throw error;
+    invalidateCache(table);
     return (data || []).map(r => toCamel(table, r));
   } catch(e) { console.error('DB bulk insert error:', e); return records; }
 }
@@ -1008,6 +1076,20 @@ function navigateTo(p) {
 }
 function navigateToPage(p) { document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); const el=document.getElementById('page-'+p); if(el) el.classList.add('active'); }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('gf_theme', next);
+  document.getElementById('theme-label').textContent = next === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+}
+function loadTheme() {
+  const saved = localStorage.getItem('gf_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  const label = document.getElementById('theme-label');
+  if (label) label.textContent = saved === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+}
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
@@ -1711,9 +1793,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     try{setDBLocal('pagamentos',JSON.parse(localStorage.getItem('gestfin_pagamentos'))||[]);}catch{}
     try{setDBLocal('config',JSON.parse(localStorage.getItem('gestfin_config'))||defaultDB('config'));}catch{}
   }
+  loadTheme();
   initSupabase();
-  await loadMoedaConfig();
   initCalendar();
+  await preloadAll();
   await renderDashboard();
 });
 </script>
