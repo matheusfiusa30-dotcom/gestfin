@@ -1020,6 +1020,10 @@ table td { font-size: 0.85rem; }
       <label>Senha</label>
       <input type="password" id="register-password" placeholder="Mínimo 6 caracteres">
     </div>
+    <div class="form-group">
+      <label>Confirmar Senha</label>
+      <input type="password" id="register-password-confirm" placeholder="Repita a senha">
+    </div>
     <button class="auth-btn primary" onclick="handleRegister()">Criar Conta</button>
     <div class="auth-divider">ou</div>
     <button class="auth-btn google" onclick="handleGoogleLogin()">
@@ -2144,8 +2148,10 @@ async function handleRegister() {
   const nome = document.getElementById('register-nome').value.trim();
   const email = document.getElementById('register-email').value.trim();
   const pw = document.getElementById('register-password').value;
-  if (!nome || !email || !pw) { showAuthError('register-error', 'Preencha todos os campos.'); return; }
+  const pwConfirm = document.getElementById('register-password-confirm').value;
+  if (!nome || !email || !pw || !pwConfirm) { showAuthError('register-error', 'Preencha todos os campos.'); return; }
   if (pw.length < 6) { showAuthError('register-error', 'A senha deve ter pelo menos 6 caracteres.'); return; }
+  if (pw !== pwConfirm) { showAuthError('register-error', 'As senhas não coincidem.'); return; }
   try {
     const data = await signUp(email, pw, nome);
     if (data.user && !data.session) {
