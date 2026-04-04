@@ -842,6 +842,18 @@ table td { font-size: 0.85rem; }
     </div>
   </div>
 
+  <div style="padding:0 16px;">
+    <div class="calendar" id="mobile-calendar">
+      <div class="calendar-header">
+        <div class="calendar-nav"><button onclick="calendarPrev();renderMobileCalendar()">&larr;</button></div>
+        <h3 id="mobile-calendar-title"></h3>
+        <div class="calendar-nav"><button onclick="calendarNext();renderMobileCalendar()">&rarr;</button><button onclick="calendarToday();renderMobileCalendar()">Hoje</button></div>
+      </div>
+      <div class="calendar-grid" id="mobile-calendar-grid"></div>
+      <div class="calendar-events" id="mobile-calendar-events"></div>
+    </div>
+  </div>
+
   <div class="mobile-section-title">Próximos Vencimentos</div>
   <div class="mobile-quick-list" id="mobile-proximos"></div>
 
@@ -1355,6 +1367,64 @@ async function renderMobileHome() {
         <div class="mq-value" style="color:var(--success);">${moeda(pg.valor)}</div>
       </div>`;
     }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade</div>';
+
+  // Render calendar
+  await renderMobileCalendar();
+}
+
+async function renderMobileCalendar() {
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const titleEl = document.getElementById('mobile-calendar-title');
+  if (!titleEl) return;
+  titleEl.textContent = `${meses[calMonth]} ${calYear}`;
+
+  const parcelas = await dbSelect('parcelas');
+  const cheques = await dbSelect('cheques');
+  const emprestimos = await dbSelect('emprestimos');
+  const clientes = await dbSelect('clientes');
+  const h = today();
+
+  const events = {};
+  function addEv(date, type, label, valor) { if(!events[date]) events[date]=[]; events[date].push({type,label,valor}); }
+
+  parcelas.filter(p=>p.status==='pendente').forEach(p=>{
+    const e=emprestimos.find(x=>x.id===p.emprestimoId);
+    const c=e?clientes.find(x=>x.id===e.pessoaId):null;
+    const tipo=p.dataVencimento<h?'vencida':p.dataVencimento===h?'hoje':'futura';
+    addEv(p.dataVencimento, tipo, `${c?c.nome:'?'} - #${p.numero}`, p.valorTotal);
+  });
+  cheques.filter(ch=>ch.status==='pendente').forEach(ch=>{
+    const c=clientes.find(x=>x.id===ch.clienteId);
+    addEv(ch.bomPara, 'cheque', `Cheque ${ch.numero} - ${c?c.nome:'?'}`, ch.valor);
+  });
+
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+
+  let html='<div class="calendar-day-header">D</div><div class="calendar-day-header">S</div><div class="calendar-day-header">T</div><div class="calendar-day-header">Q</div><div class="calendar-day-header">Q</div><div class="calendar-day-header">S</div><div class="calendar-day-header">S</div>';
+  for(let i=firstDay-1;i>=0;i--) html+=`<div class="calendar-day other-month">${daysInPrev-i}</div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isT=ds===h, isS=ds===calSelectedDate, de=events[ds]||[];
+    let dots='';
+    if(de.length>0){const ts=[...new Set(de.map(e=>e.type))];dots='<div class="dots">'+ts.map(t=>`<div class="dot ${t==='vencida'?'dot-danger':t==='hoje'?'dot-warning':t==='cheque'?'dot-info':'dot-success'}"></div>`).join('')+'</div>';}
+    html+=`<div class="calendar-day${isT?' today':''}${isS?' selected':''}" onclick="calSelectedDate=calSelectedDate==='${ds}'?null:'${ds}';renderMobileCalendar()">${d}${dots}</div>`;
+  }
+  const tot=firstDay+daysInMonth, rem=tot%7===0?0:7-(tot%7);
+  for(let i=1;i<=rem;i++) html+=`<div class="calendar-day other-month">${i}</div>`;
+  document.getElementById('mobile-calendar-grid').innerHTML=html;
+
+  // Events
+  const evDiv=document.getElementById('mobile-calendar-events');
+  const showDate=calSelectedDate||h;
+  const dayEv=events[showDate]||[];
+  if(dayEv.length>0){
+    evDiv.innerHTML=`<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:6px;">${fmtData(showDate)} - ${dayEv.length} evento(s)</div>`+
+      dayEv.map(e=>`<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+  } else {
+    evDiv.innerHTML=calSelectedDate?`<div style="text-align:center;color:var(--text-muted);padding:8px;font-size:0.8rem;">Sem eventos em ${fmtData(showDate)}</div>`:'';
+  }
 }
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
