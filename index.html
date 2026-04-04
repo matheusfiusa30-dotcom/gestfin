@@ -466,6 +466,8 @@ table td { font-size: 0.85rem; }
 
   /* Hide desktop-only elements */
   .chart-container { display: none; }
+  .desktop-only-card { display: none !important; }
+  .mobile-only-list { display: block; padding: 0; }
 
   /* Show action buttons below header on detail pages */
   #page-contrato-detalhe .page-header .btn { display: none !important; }
@@ -484,6 +486,7 @@ table td { font-size: 0.85rem; }
   .mobile-home { display: none !important; }
   .mobile-page-header { display: none !important; }
   .mobile-detail-actions { display: none !important; }
+  .mobile-only-list { display: none !important; }
 }
 </style>
 </head>
@@ -784,14 +787,15 @@ table td { font-size: 0.85rem; }
       <button class="btn btn-primary" onclick="openClienteModal()">+ Novo Cliente</button>
     </div>
   </div>
-  <div class="card">
+  <div class="card desktop-only-card">
     <div class="table-wrapper">
       <table><thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Email</th><th>Cobrador</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody id="clientes-table"></tbody></table>
     </div>
-    <div class="empty-state" id="clientes-empty" style="display:none;">
-      <h3>Nenhum cliente cadastrado</h3><p>Clique em "+ Novo Cliente" para começar</p>
-    </div>
+  </div>
+  <div id="clientes-mobile-list" class="mobile-only-list"></div>
+  <div class="empty-state" id="clientes-empty" style="display:none;">
+    <h3>Nenhum cliente cadastrado</h3><p>Clique em "+ Novo Cliente" para começar</p>
   </div>
 </section>
 
@@ -1726,14 +1730,33 @@ async function renderClientes() {
   const s=(document.getElementById('clientes-search')?.value||'').toLowerCase();
   const f=cl.filter(p=>p.nome.toLowerCase().includes(s)||(p.cpf||'').includes(s));
   const tb=document.getElementById('clientes-table'),em=document.getElementById('clientes-empty');
-  if(!f.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
-  let html='';
+  const mob=document.getElementById('clientes-mobile-list');
+  if(!f.length){tb.innerHTML='';if(mob)mob.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  let html='', mhtml='';
   for(const p of f){
     const st=await getClienteStatus(p.id,es,ps);
     const cob=cobs.find(c=>c.id===p.cobradorId);
+    // Desktop table
     html+=`<tr><td><strong>${esc(p.nome)}</strong></td><td>${esc(p.cpf||'-')}</td><td>${esc(p.telefone||'-')}</td><td>${esc(p.email||'-')}</td><td>${cob?esc(cob.nome):'-'}</td><td><span class="badge ${st.c}">${st.l}</span></td><td style="white-space:nowrap;"><button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openClienteModal('${p.id}')" style="margin-right:4px;">Editar</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();excluirCliente('${p.id}')">Excluir</button></td></tr>`;
+    // Mobile card
+    mhtml+=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:0.95rem;">${esc(p.nome)}</strong>
+        <span class="badge ${st.c}">${st.l}</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:3px;">
+        <span>CPF: ${esc(p.cpf||'-')}</span>
+        <span>Tel: ${esc(p.telefone||'-')}</span>
+        ${p.email?'<span>Email: '+esc(p.email)+'</span>':''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn btn-sm btn-primary" onclick="openClienteModal('${p.id}')" style="flex:1;">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirCliente('${p.id}')" style="flex:1;">Excluir</button>
+      </div>
+    </div>`;
   }
   tb.innerHTML=html;
+  if(mob) mob.innerHTML=mhtml;
 }
 
 
