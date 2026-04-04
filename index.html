@@ -253,17 +253,26 @@ table td { font-size: 0.85rem; }
 .calendar-day.selected { background: var(--accent); color: #fff; }
 .calendar-day.other-month { color: var(--text-muted); opacity: 0.3; }
 .calendar-day .dots { display: flex; justify-content: center; gap: 3px; margin-top: 4px; }
-.calendar-day .dot { width: 5px; height: 5px; border-radius: 50%; }
+.calendar-day .dot { width: 6px; height: 6px; border-radius: 50%; }
 .dot-danger { background: var(--danger); }
 .dot-warning { background: var(--warning); }
 .dot-success { background: var(--success); }
 .dot-info { background: var(--info); }
+.calendar-day.has-overdue { background: rgba(211,47,47,0.15); color: var(--danger); font-weight: 700; }
+.calendar-day.has-today-due { background: rgba(249,168,37,0.15); color: var(--warning); font-weight: 600; }
+.calendar-day.has-future { background: rgba(25,118,210,0.06); }
 .calendar-events { margin-top: 12px; }
-.calendar-event { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.8rem; border-left: 3px solid var(--border); }
-.calendar-event.vencida { border-left-color: var(--danger); }
-.calendar-event.hoje { border-left-color: var(--warning); }
+.calendar-event { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 0.8rem; border-left: 4px solid var(--border); }
+.calendar-event.vencida { border-left-color: var(--danger); background: rgba(211,47,47,0.08); }
+.calendar-event.vencida .ev-value { color: var(--danger); font-weight: 700; }
+.calendar-event.hoje { border-left-color: var(--warning); background: rgba(249,168,37,0.08); }
 .calendar-event.futura { border-left-color: var(--info); }
 .calendar-event.cheque { border-left-color: var(--accent); }
+.calendar-event .ev-label { font-weight: 500; }
+.calendar-event .ev-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; margin-left: 8px; }
+.calendar-event .ev-badge.badge-overdue { background: rgba(211,47,47,0.15); color: var(--danger); }
+.calendar-event .ev-badge.badge-today { background: rgba(249,168,37,0.15); color: var(--warning); }
+.calendar-event .ev-badge.badge-upcoming { background: rgba(25,118,210,0.15); color: var(--info); }
 
 /* PRINT */
 .recibo-print { display: none; }
@@ -1537,8 +1546,12 @@ async function renderMobileCalendar() {
     const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isT=ds===h, isS=ds===calSelectedDate, de=events[ds]||[];
     let dots='';
+    const hasOverdue=de.some(e=>e.type==='vencida');
+    const hasTodayDue=de.some(e=>e.type==='hoje');
+    const hasFuture=de.some(e=>e.type==='futura'||e.type==='cheque');
     if(de.length>0){const ts=[...new Set(de.map(e=>e.type))];dots='<div class="dots">'+ts.map(t=>`<div class="dot ${t==='vencida'?'dot-danger':t==='hoje'?'dot-warning':t==='cheque'?'dot-info':'dot-success'}"></div>`).join('')+'</div>';}
-    html+=`<div class="calendar-day${isT?' today':''}${isS?' selected':''}" onclick="calSelectedDate=calSelectedDate==='${ds}'?null:'${ds}';renderMobileCalendar()">${d}${dots}</div>`;
+    const dayCls = isS?' selected':isT?' today':hasOverdue?' has-overdue':hasTodayDue?' has-today-due':hasFuture?' has-future':'';
+    html+=`<div class="calendar-day${dayCls}" onclick="calSelectedDate=calSelectedDate==='${ds}'?null:'${ds}';renderMobileCalendar()">${d}${dots}</div>`;
   }
   const tot=firstDay+daysInMonth, rem=tot%7===0?0:7-(tot%7);
   for(let i=1;i<=rem;i++) html+=`<div class="calendar-day other-month">${i}</div>`;
@@ -1549,8 +1562,9 @@ async function renderMobileCalendar() {
   const showDate=calSelectedDate||h;
   const dayEv=events[showDate]||[];
   if(dayEv.length>0){
-    evDiv.innerHTML=`<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:6px;">${fmtData(showDate)} - ${dayEv.length} evento(s)</div>`+
-      dayEv.map(e=>`<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+    const badgeMap={vencida:'<span class="ev-badge badge-overdue">ATRASADA</span>',hoje:'<span class="ev-badge badge-today">HOJE</span>',futura:'<span class="ev-badge badge-upcoming">PENDENTE</span>',cheque:'<span class="ev-badge badge-upcoming">CHEQUE</span>'};
+    evDiv.innerHTML=`<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:8px;">${fmtData(showDate)} - ${dayEv.length} evento(s)</div>`+
+      dayEv.map(e=>`<div class="calendar-event ${e.type}"><div><span class="ev-label">${esc(e.label)}</span>${badgeMap[e.type]||''}</div><span class="ev-value">${moeda(e.valor)}</span></div>`).join('');
   } else {
     evDiv.innerHTML=calSelectedDate?`<div style="text-align:center;color:var(--text-muted);padding:8px;font-size:0.8rem;">Sem eventos em ${fmtData(showDate)}</div>`:'';
   }
@@ -2204,7 +2218,9 @@ async function renderCalendar() {
       }).join('') + '</div>';
     }
 
-    html += `<div class="calendar-day${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalendarDay('${dateStr}')">${d}${dots}</div>`;
+    const hasOv=dayEvents.some(e=>e.type==='vencida'), hasTd=dayEvents.some(e=>e.type==='hoje'), hasFt=dayEvents.some(e=>e.type==='futura'||e.type==='cheque');
+    const dc=isSelected?' selected':isToday?' today':hasOv?' has-overdue':hasTd?' has-today-due':hasFt?' has-future':'';
+    html += `<div class="calendar-day${dc}" onclick="selectCalendarDay('${dateStr}')">${d}${dots}</div>`;
   }
 
   // Next month days
@@ -2227,22 +2243,22 @@ function selectCalendarDay(dateStr) {
 
 async function renderCalendarEvents(events) {
   const evDiv = document.getElementById('calendar-events');
+  const badgeMap={vencida:'<span class="ev-badge badge-overdue">ATRASADA</span>',hoje:'<span class="ev-badge badge-today">HOJE</span>',futura:'<span class="ev-badge badge-upcoming">PENDENTE</span>',cheque:'<span class="ev-badge badge-upcoming">CHEQUE</span>'};
+  function renderEvList(date, evs) {
+    return `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">${fmtData(date)} - ${evs.length} evento(s):</div>` +
+      evs.map(e => `<div class="calendar-event ${e.type}"><div><span class="ev-label">${esc(e.label)}</span>${badgeMap[e.type]||''}</div><span class="ev-value">${moeda(e.valor)}</span></div>`).join('');
+  }
   if(!calSelectedDate || !events[calSelectedDate]) {
-    // Show today's events or summary
     const h = today();
     const todayEvents = events[h] || [];
     if(todayEvents.length > 0) {
-      evDiv.innerHTML = `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">Hoje (${fmtData(h)}) - ${todayEvents.length} evento(s):</div>` +
-        todayEvents.map(e => `<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+      evDiv.innerHTML = renderEvList(h, todayEvents);
     } else {
       evDiv.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.85rem;">Selecione um dia para ver os eventos</div>';
     }
     return;
   }
-
-  const dayEvents = events[calSelectedDate];
-  evDiv.innerHTML = `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">${fmtData(calSelectedDate)} - ${dayEvents.length} evento(s):</div>` +
-    dayEvents.map(e => `<div class="calendar-event ${e.type}"><span>${esc(e.label)}</span><span>${moeda(e.valor)}</span></div>`).join('');
+  evDiv.innerHTML = renderEvList(calSelectedDate, events[calSelectedDate]);
 }
 
 // ================================================
