@@ -1575,7 +1575,8 @@ table td { font-size: 0.85rem; }
     <div style="background:var(--bg-primary);border-radius:var(--radius-sm);height:8px;overflow:hidden;margin-bottom:12px;">
       <div id="cfg-plano-bar" style="background:var(--accent);height:100%;border-radius:var(--radius-sm);width:0%;transition:width 0.3s;"></div>
     </div>
-    <button class="btn btn-primary btn-sm" onclick="showUpgradeModal(0,0,'gratis')" id="cfg-upgrade-btn">Fazer Upgrade</button>
+    <button class="btn btn-primary btn-sm" onclick="showUpgradeModal(0,0,currentProfile?.plano||'gratis')" id="cfg-upgrade-btn">Fazer Upgrade</button>
+    <button class="btn btn-ghost btn-sm" onclick="verificarPagamento()" id="cfg-verificar-btn" style="margin-left:8px;">Verificar Pagamento</button>
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>Info do Sistema</h3></div>
@@ -2146,6 +2147,32 @@ async function iniciarCheckout(plano) {
 function choosePlanAndRegister(plano) {
   pendingPlano = plano;
   openAuthModal('modal-register');
+}
+
+async function verificarPagamento() {
+  if (!currentUser) { toast('Faça login primeiro.', 'error'); return; }
+  toast('Verificando pagamento...', 'info');
+  try {
+    // Forçar reload do perfil do Supabase
+    const { data, error } = await supabaseClient.from('perfis').select('*').eq('id', currentUser.id).single();
+    if (error) throw error;
+    const planoAnterior = currentProfile?.plano || 'gratis';
+    currentProfile = data;
+    updateSidebarPlan();
+    updateSidebarUser();
+    if (data.plano !== 'gratis' && data.plano !== planoAnterior) {
+      toast('Plano atualizado para ' + (PLANOS[data.plano]?.nome || data.plano) + '!', 'success');
+      closeUpgradeModal();
+      renderConfig();
+    } else if (data.plano !== 'gratis') {
+      toast('Seu plano atual: ' + (PLANOS[data.plano]?.nome || data.plano), 'info');
+    } else {
+      toast('Nenhum pagamento encontrado. Se você acabou de pagar, aguarde alguns segundos e tente novamente.', 'warning');
+    }
+  } catch(e) {
+    console.error('Verificar pagamento error:', e);
+    toast('Erro ao verificar. Tente novamente.', 'error');
+  }
 }
 
 // Auth modal handlers
