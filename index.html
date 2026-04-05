@@ -2122,6 +2122,9 @@ function closeUpgradeModal() {
   document.getElementById('modal-upgrade').classList.remove('active');
 }
 
+// Inicializar SDK MercadoPago.js v2
+const mpSdk = typeof MercadoPago !== 'undefined' ? new MercadoPago('PEjj0yqPqNJbmHR5uAvR4tgLA7ZsWwzo', { locale: 'pt-BR' }) : null;
+
 async function iniciarCheckout(plano) {
   if (!currentUser) {
     pendingPlano = plano;
