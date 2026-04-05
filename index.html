@@ -1750,40 +1750,99 @@ table td { font-size: 0.85rem; }
   </div>
 </div>
 
+<!-- Modal Tipo de Contrato -->
+<div class="modal-overlay" id="modal-tipo-contrato">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header"><h3>Tipo de Contrato</h3><button class="btn-icon" onclick="closeModal('modal-tipo-contrato')">&times;</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('comum')">Contrato Comum</button>
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('parcela-unica')">Parcela Única para X dias</button>
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('troca-cheques')">Troca de Cheques</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Contrato -->
 <div class="modal-overlay" id="modal-contrato">
   <div class="modal modal-lg">
     <div class="modal-header"><h3 id="modal-emp-titulo">Novo Contrato</h3><button class="btn-icon" onclick="closeModal('modal-contrato')">&times;</button></div>
     <div class="modal-body">
       <input type="hidden" id="emp-id">
-      <div class="form-row">
-        <div class="form-group"><label>Cliente *</label><select class="form-control" id="emp-pessoa"></select></div>
-        <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="emp-valor" step="0.01"></div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="emp-taxa" step="0.01"></div>
-        <div class="form-group"><label>Nº Parcelas *</label><input class="form-control" type="number" id="emp-nparcelas" min="1" max="360"></div>
-        <div class="form-group">
-          <label>Tipo de Juros *</label>
-          <select class="form-control" id="emp-tipo-juros">
-            <option value="simples">Juros Simples</option>
-            <option value="composto">Juros Compostos</option>
-          </select>
+      <input type="hidden" id="emp-tipo-contrato" value="comum">
+
+      <!-- CAMPOS CONTRATO COMUM -->
+      <div id="campos-comum">
+        <div class="form-row">
+          <div class="form-group"><label>Cliente *</label><select class="form-control" id="emp-pessoa"></select></div>
+          <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="emp-valor" step="0.01"></div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="emp-inicio"></div>
-        <div class="form-group">
-          <label>Frequência de Vencimento *</label>
-          <select class="form-control" id="emp-frequencia">
-            <option value="mensal">Mensal (30 dias)</option>
-            <option value="quinzenal">Quinzenal (15 dias)</option>
-            <option value="semanal">Semanal (7 dias)</option>
-          </select>
+        <div class="form-row-3">
+          <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="emp-taxa" step="0.01"></div>
+          <div class="form-group"><label>Nº Parcelas *</label><input class="form-control" type="number" id="emp-nparcelas" min="1" max="360"></div>
+          <div class="form-group">
+            <label>Tipo de Juros *</label>
+            <select class="form-control" id="emp-tipo-juros">
+              <option value="simples">Juros Simples</option>
+              <option value="composto">Juros Compostos</option>
+            </select>
+          </div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="emp-inicio"></div>
+          <div class="form-group">
+            <label>Frequência de Vencimento *</label>
+            <select class="form-control" id="emp-frequencia">
+              <option value="mensal">Mensal (30 dias)</option>
+              <option value="quinzenal">Quinzenal (15 dias)</option>
+              <option value="semanal">Semanal (7 dias)</option>
+              <option value="diario">Diário</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Observações</label><textarea class="form-control" id="emp-obs"></textarea></div>
+        <button class="btn btn-ghost" onclick="previewParcelas()" style="margin-top:4px;">Pré-visualizar</button>
       </div>
-      <div class="form-group"><label>Observações</label><textarea class="form-control" id="emp-obs"></textarea></div>
-      <button class="btn btn-ghost" onclick="previewParcelas()" style="margin-top:4px;">Pré-visualizar</button>
+
+      <!-- CAMPOS PARCELA ÚNICA -->
+      <div id="campos-parcela-unica" style="display:none;">
+        <div class="form-row">
+          <div class="form-group"><label>Cliente *</label><select class="form-control" id="pu-pessoa"></select></div>
+          <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="pu-valor" step="0.01"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="pu-taxa" step="0.01"></div>
+          <div class="form-group"><label>Prazo (dias) *</label><input class="form-control" type="number" id="pu-dias" min="1" value="30"></div>
+          <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="pu-inicio"></div>
+        </div>
+        <div id="pu-resumo" style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-top:8px;display:none;">
+          <p style="font-size:0.85rem;color:var(--text-secondary);">Juros: <strong id="pu-juros-val">R$ 0</strong> | Total a receber: <strong id="pu-total-val">R$ 0</strong> | Vencimento: <strong id="pu-venc-val">-</strong></p>
+        </div>
+        <button class="btn btn-ghost" onclick="previewParcelaUnica()" style="margin-top:8px;">Calcular</button>
+        <div class="form-group" style="margin-top:8px;"><label>Observações</label><textarea class="form-control" id="pu-obs"></textarea></div>
+      </div>
+
+      <!-- CAMPOS TROCA DE CHEQUES -->
+      <div id="campos-troca-cheques" style="display:none;">
+        <div class="form-row">
+          <div class="form-group"><label>Cliente *</label><select class="form-control" id="tc-pessoa"></select></div>
+          <div class="form-group"><label>Valor do Cheque *</label><input class="form-control" type="number" id="tc-valor-cheque" step="0.01"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Taxa de Desconto (%) *</label><input class="form-control" type="number" id="tc-taxa" step="0.01"></div>
+          <div class="form-group"><label>Data do Cheque (Bom Para) *</label><input class="form-control" type="date" id="tc-bom-para"></div>
+          <div class="form-group"><label>Data de Hoje</label><input class="form-control" type="date" id="tc-inicio"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Nº Cheque</label><input class="form-control" id="tc-num-cheque"></div>
+          <div class="form-group"><label>Banco</label><input class="form-control" id="tc-banco"></div>
+          <div class="form-group"><label>Agência</label><input class="form-control" id="tc-agencia"></div>
+        </div>
+        <div id="tc-resumo" style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-top:8px;display:none;">
+          <p style="font-size:0.85rem;color:var(--text-secondary);">Valor do cheque: <strong id="tc-cheque-val">R$ 0</strong> | Desconto: <strong id="tc-desconto-val">R$ 0</strong> | Valor entregue: <strong id="tc-entregue-val">R$ 0</strong> | Lucro: <strong id="tc-lucro-val" style="color:var(--success);">R$ 0</strong></p>
+        </div>
+        <button class="btn btn-ghost" onclick="previewTrocaCheque()" style="margin-top:8px;">Calcular</button>
+        <div class="form-group" style="margin-top:8px;"><label>Observações</label><textarea class="form-control" id="tc-obs"></textarea></div>
+      </div>
       <div id="emp-preview" style="display:none;margin-top:12px;">
         <div class="table-wrapper" style="max-height:250px;overflow-y:auto;">
           <table><thead><tr><th>#</th><th>Venc.</th><th>Amort.</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr></thead><tbody id="emp-preview-table"></tbody></table>
@@ -2778,7 +2837,9 @@ function gerarVencimentos(dataInicio, frequencia, nParcelas) {
   const vencimentos = [];
   for (let i = 1; i <= nParcelas; i++) {
     const d = new Date(ini);
-    if (frequencia === 'semanal') {
+    if (frequencia === 'diario') {
+      d.setDate(d.getDate() + i);
+    } else if (frequencia === 'semanal') {
       d.setDate(d.getDate() + (7 * i));
     } else if (frequencia === 'quinzenal') {
       d.setDate(d.getDate() + (15 * i));
@@ -2926,11 +2987,69 @@ async function renderCobradores() {
 // ================================================
 async function openContratoModal() {
   const cl=await dbSelect('clientes'); if(!cl.length){toast('Cadastre um cliente primeiro','warning');return;}
-  ['emp-id','emp-valor','emp-taxa','emp-nparcelas','emp-obs'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('emp-inicio').value=today();document.getElementById('emp-frequencia').value='mensal';
-  document.getElementById('emp-preview').style.display='none';document.getElementById('modal-emp-titulo').textContent='Novo Contrato';
-  document.getElementById('emp-pessoa').innerHTML='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+  // Guardar clientes pra uso nos sub-formulários
+  window._contratoClientes=cl;
+  openModal('modal-tipo-contrato');
+}
+
+function openContratoTipo(tipo) {
+  const cl=window._contratoClientes||[];
+  const opts='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+  document.getElementById('emp-tipo-contrato').value=tipo;
+
+  // Esconder todos os campos
+  document.getElementById('campos-comum').style.display='none';
+  document.getElementById('campos-parcela-unica').style.display='none';
+  document.getElementById('campos-troca-cheques').style.display='none';
+
+  if(tipo==='comum'){
+    document.getElementById('campos-comum').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Novo Contrato';
+    ['emp-id','emp-valor','emp-taxa','emp-nparcelas','emp-obs'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('emp-inicio').value=today();document.getElementById('emp-frequencia').value='mensal';
+    document.getElementById('emp-tipo-juros').value='simples';
+    document.getElementById('emp-preview').style.display='none';
+    document.getElementById('emp-pessoa').innerHTML=opts;
+  } else if(tipo==='parcela-unica'){
+    document.getElementById('campos-parcela-unica').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Parcela Única';
+    ['pu-valor','pu-taxa','pu-obs'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('pu-dias').value='30';
+    document.getElementById('pu-inicio').value=today();
+    document.getElementById('pu-resumo').style.display='none';
+    document.getElementById('pu-pessoa').innerHTML=opts;
+  } else if(tipo==='troca-cheques'){
+    document.getElementById('campos-troca-cheques').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Troca de Cheques';
+    ['tc-valor-cheque','tc-taxa','tc-num-cheque','tc-banco','tc-agencia','tc-obs'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('tc-inicio').value=today();
+    document.getElementById('tc-bom-para').value='';
+    document.getElementById('tc-resumo').style.display='none';
+    document.getElementById('tc-pessoa').innerHTML=opts;
+  }
   openModal('modal-contrato');
+}
+
+function previewParcelaUnica() {
+  const v=parseFloat(document.getElementById('pu-valor').value),t=parseFloat(document.getElementById('pu-taxa').value),d=parseInt(document.getElementById('pu-dias').value),ini=document.getElementById('pu-inicio').value;
+  if(!v||!t||!d||!ini){toast('Preencha os campos','error');return;}
+  const juros=v*(t/100)*(d/30);const total=v+juros;
+  const venc=new Date(ini);venc.setDate(venc.getDate()+d);
+  document.getElementById('pu-juros-val').textContent=moeda(juros);
+  document.getElementById('pu-total-val').textContent=moeda(total);
+  document.getElementById('pu-venc-val').textContent=fmtData(venc.toISOString().split('T')[0]);
+  document.getElementById('pu-resumo').style.display='block';
+}
+
+function previewTrocaCheque() {
+  const vCheque=parseFloat(document.getElementById('tc-valor-cheque').value),t=parseFloat(document.getElementById('tc-taxa').value);
+  if(!vCheque||!t){toast('Preencha valor e taxa','error');return;}
+  const desconto=vCheque*(t/100);const entregue=vCheque-desconto;
+  document.getElementById('tc-cheque-val').textContent=moeda(vCheque);
+  document.getElementById('tc-desconto-val').textContent=moeda(desconto);
+  document.getElementById('tc-entregue-val').textContent=moeda(entregue);
+  document.getElementById('tc-lucro-val').textContent=moeda(desconto);
+  document.getElementById('tc-resumo').style.display='block';
 }
 function previewParcelas() {
   const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipo=document.getElementById('emp-tipo-juros').value;
@@ -2941,45 +3060,81 @@ function previewParcelas() {
   document.getElementById('emp-preview').style.display='block';
 }
 async function salvarContrato() {
-  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
-  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
+  const tipoContrato=document.getElementById('emp-tipo-contrato').value;
+
   // Validar limite do plano
   const planCheck = await checkPlanLimit();
   if (!planCheck.canCreate) { showUpgradeModal(planCheck.ativos, planCheck.max, planCheck.planoAtual); return; }
-  // Validar limite de crédito
+
   const cl=await dbSelect('clientes');
+
+  if(tipoContrato==='parcela-unica') {
+    return salvarParcelaUnica(cl);
+  } else if(tipoContrato==='troca-cheques') {
+    return salvarTrocaCheques(cl);
+  }
+
+  // CONTRATO COMUM
+  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
+  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
   const cliente=cl.find(x=>x.id===pid);
   if(cliente && cliente.limiteCredito){
     const es=await dbSelect('emprestimos');
     const contratosAtivos=es.filter(e=>e.pessoaId===pid&&(e.status==='ativo'||e.status==='atrasado'));
     const totalUtilizado=contratosAtivos.reduce((s,e)=>s+Number(e.valor||0),0);
     const disponivel=Number(cliente.limiteCredito)-totalUtilizado;
-    if(v>disponivel){
-      toast(`Limite de crédito excedido! Limite: ${moeda(cliente.limiteCredito)} | Utilizado: ${moeda(totalUtilizado)} | Disponível: ${moeda(Math.max(0,disponivel))}`,'error');
-      return;
-    }
+    if(v>disponivel){toast(`Limite de crédito excedido! Disponível: ${moeda(Math.max(0,disponivel))}`,'error');return;}
   }
   const eid=genId();
   const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
   const actualEid = insertedEmp.id || eid;
-
   const c=calcParcelas(v,t,n,tipoJuros),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
-  closeModal('modal-contrato');
-  toast('Contrato criado!');
+  closeModal('modal-contrato');toast('Contrato criado!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
-  await renderContratos();
-  updateSidebarPlan();
+  await renderContratos();updateSidebarPlan();
+  const primParcela=c[0],valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
+  const freqLabel={diario:'Diário',semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
+  setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel), 300);
+}
 
-  // Mostrar modal WhatsApp após 300ms (esperar modal contrato fechar)
-  const primParcela=c[0];
-  const valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
-  const freqLabel={semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
-  setTimeout(()=>{
-    showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel);
-  }, 300);
+async function salvarParcelaUnica(cl) {
+  const pid=document.getElementById('pu-pessoa').value,v=parseFloat(document.getElementById('pu-valor').value),t=parseFloat(document.getElementById('pu-taxa').value),dias=parseInt(document.getElementById('pu-dias').value),ini=document.getElementById('pu-inicio').value;
+  if(!pid||!v||!t||!dias||!ini){toast('Preencha todos os campos','error');return;}
+  const cliente=cl.find(x=>x.id===pid);
+  const juros=v*(t/100)*(dias/30);const total=v+juros;
+  const venc=new Date(ini);venc.setDate(venc.getDate()+dias);const vencStr=venc.toISOString().split('T')[0];
+  const eid=genId();
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'simples',sistema:'parcela-unica',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('pu-obs').value.trim()||'')+` [Parcela única - ${dias} dias]`,criadoEm:today(),renegociadoDe:null};
+  const insertedEmp=await dbInsert('emprestimos',empRecord);
+  const actualEid=insertedEmp.id||eid;
+  await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:v,valorJuros:juros,valorTotal:total,dataVencimento:vencStr,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
+  closeModal('modal-contrato');toast('Parcela única criada!');
+  invalidateCache('emprestimos');invalidateCache('parcelas');
+  await renderContratos();updateSidebarPlan();
+  setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, total, total, 1, vencStr, `Parcela única (${dias} dias)`), 300);
+}
+
+async function salvarTrocaCheques(cl) {
+  const pid=document.getElementById('tc-pessoa').value,vCheque=parseFloat(document.getElementById('tc-valor-cheque').value),t=parseFloat(document.getElementById('tc-taxa').value),bomPara=document.getElementById('tc-bom-para').value,ini=document.getElementById('tc-inicio').value;
+  if(!pid||!vCheque||!t||!bomPara||!ini){toast('Preencha todos os campos','error');return;}
+  const cliente=cl.find(x=>x.id===pid);
+  const desconto=vCheque*(t/100);const entregue=vCheque-desconto;
+  // Criar contrato (valor = entregue ao cliente, lucro = desconto)
+  const eid=genId();
+  const empRecord={id:eid,pessoaId:pid,valor:entregue,taxaJuros:t,tipoJuros:'simples',sistema:'troca-cheques',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('tc-obs').value.trim()||'')+` [Troca cheque R$${vCheque.toFixed(2)} - Desc. ${t}%]`,criadoEm:today(),renegociadoDe:null};
+  const insertedEmp=await dbInsert('emprestimos',empRecord);
+  const actualEid=insertedEmp.id||eid;
+  // Parcela = valor total do cheque no vencimento
+  await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:entregue,valorJuros:desconto,valorTotal:vCheque,dataVencimento:bomPara,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
+  // Registrar cheque na aba cheques (vinculado ao cliente)
+  const numCheque=document.getElementById('tc-num-cheque').value.trim()||'S/N';
+  await dbInsert('cheques',{id:genId(),clienteId:pid,contratoId:actualEid,numero:numCheque,banco:document.getElementById('tc-banco').value.trim(),agencia:document.getElementById('tc-agencia').value.trim(),valor:vCheque,emissao:ini,bomPara:bomPara,status:'pendente',obs:`Troca de cheque`,criadoEm:today()});
+  closeModal('modal-contrato');toast('Troca de cheque registrada!');
+  invalidateCache('emprestimos');invalidateCache('parcelas');invalidateCache('cheques');
+  await renderContratos();updateSidebarPlan();
 }
 
 function showContratoWhatsApp(cliente, contratoId, valor, valorTotal, valorParcela, numParcelas, primVenc, freqLabel) {
