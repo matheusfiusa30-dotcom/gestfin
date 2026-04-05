@@ -428,15 +428,19 @@ table td { font-size: 0.85rem; }
   }
 
   /* iOS-style cards and lists */
-  .card { border-radius: 12px; margin: 0 0 12px 0; max-width: 100%; overflow: hidden; }
-  table { font-size: 0.75rem; }
+  .card { border-radius: 12px; margin: 0 0 12px 0; max-width: 100%; overflow: hidden; width: 100%; box-sizing: border-box; }
+  table { font-size: 0.75rem; width: 100%; }
   table th { font-size: 0.6rem; white-space: nowrap; }
   table th, table td { padding: 6px 8px; white-space: nowrap; }
   table td { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-  .page-header { flex-wrap: nowrap; gap: 8px; }
+  .page-header { flex-wrap: wrap; gap: 8px; width: 100%; }
+  .page-header > div { width: 100%; flex-wrap: wrap; }
   .page-header h2 { font-size: 1.1rem; white-space: nowrap; }
   .search-bar { max-width: 100%; width: 100%; }
   .form-row, .form-row-3 { gap: 8px; }
+  /* Force all inline flex containers to wrap and fill width */
+  .page > div[style*="display:flex"], .page > div[style*="display:grid"] { width: 100% !important; flex-wrap: wrap !important; }
+  .page select.form-control, .page input[type="month"] { width: 100% !important; }
   .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
   .tab-btn { white-space: nowrap; padding: 8px 14px; font-size: 0.8rem; }
 
@@ -467,6 +471,28 @@ table td { font-size: 0.85rem; }
   /* Hide desktop-only elements */
   .chart-container { display: none; }
   .desktop-only-card { display: none !important; }
+
+  /* Make all remaining tables scroll horizontally but fill width */
+  .card .table-wrapper { width: 100%; }
+  .card .table-wrapper table { min-width: 500px; }
+
+  /* AI chat panel */
+  .ai-panel { width: 100%; box-sizing: border-box; }
+  .ai-input-row { flex-wrap: wrap; width: 100%; }
+  .ai-input-row input { flex: 1; min-width: 0; }
+
+  /* Config page */
+  #page-config .card { width: 100%; }
+  #page-config textarea { width: 100%; box-sizing: border-box; }
+
+  /* Simulador */
+  #sim-resultados { width: 100%; }
+
+  /* Contrato detalhe */
+  #page-contrato-detalhe .card { width: 100%; }
+
+  /* Upgrade modal */
+  .upgrade-plans { grid-template-columns: 1fr !important; }
   .mobile-only-list { display: block; padding: 0; }
 
   /* Show action buttons below header on detail pages */
