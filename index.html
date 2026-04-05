@@ -1541,6 +1541,13 @@ table td { font-size: 0.85rem; }
       <div class="form-group"><label>Taxa (% mês)</label><input class="form-control" type="number" id="sim-taxa" step="0.01"></div>
       <div class="form-group"><label>Parcelas</label><input class="form-control" type="number" id="sim-parcelas"></div>
     </div>
+    <div class="form-group" style="margin-top:8px;">
+      <label>Tipo de Juros</label>
+      <select class="form-control" id="sim-tipo-juros">
+        <option value="simples">Juros Simples</option>
+        <option value="composto">Juros Compostos</option>
+      </select>
+    </div>
     <button class="btn btn-primary" onclick="simular()" style="margin-top:8px;">Simular</button>
   </div>
   <div id="sim-resultados" style="display:none;">
@@ -1753,9 +1760,16 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Cliente *</label><select class="form-control" id="emp-pessoa"></select></div>
         <div class="form-group"><label>Valor Principal *</label><input class="form-control" type="number" id="emp-valor" step="0.01"></div>
       </div>
-      <div class="form-row">
+      <div class="form-row-3">
         <div class="form-group"><label>Taxa Juros (% mês) *</label><input class="form-control" type="number" id="emp-taxa" step="0.01"></div>
         <div class="form-group"><label>Nº Parcelas *</label><input class="form-control" type="number" id="emp-nparcelas" min="1" max="360"></div>
+        <div class="form-group">
+          <label>Tipo de Juros *</label>
+          <select class="form-control" id="emp-tipo-juros">
+            <option value="simples">Juros Simples</option>
+            <option value="composto">Juros Compostos</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Data Início *</label><input class="form-control" type="date" id="emp-inicio"></div>
@@ -1814,14 +1828,21 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Nova Taxa (% mês)</label><input class="form-control" type="number" id="reneg-taxa" step="0.01"></div>
         <div class="form-group"><label>Novas Parcelas</label><input class="form-control" type="number" id="reneg-parcelas" min="1"></div>
       </div>
-      <div class="form-row">
+      <div class="form-row-3">
         <div class="form-group"><label>Data Início</label><input class="form-control" type="date" id="reneg-inicio"></div>
         <div class="form-group">
-          <label>Frequência de Vencimento *</label>
+          <label>Frequência *</label>
           <select class="form-control" id="reneg-frequencia">
             <option value="mensal">Mensal (30 dias)</option>
             <option value="quinzenal">Quinzenal (15 dias)</option>
             <option value="semanal">Semanal (7 dias)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de Juros *</label>
+          <select class="form-control" id="reneg-tipo-juros">
+            <option value="simples">Juros Simples</option>
+            <option value="composto">Juros Compostos</option>
           </select>
         </div>
       </div>
@@ -2742,8 +2763,14 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ================================================
 // CÁLCULOS FINANCEIROS
 // ================================================
+function calcJurosSimples(v,t,n) {
+  const i=t/100, totalJuros=v*i*n, totalGeral=v+totalJuros, pmt=totalGeral/n, ps=[];
+  let s=v;
+  for(let x=1;x<=n;x++){const j=v*i, a=pmt-j; s-=a; ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});}
+  return ps;
+}
 function calcJurosCompostos(v,t,n) { const i=t/100, pmt=v*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1), ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i,a=pmt-j;s-=a;ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});} return ps; }
-function calcParcelas(v,t,n) { return calcJurosCompostos(v,t,n); }
+function calcParcelas(v,t,n,tipo) { return tipo==='composto' ? calcJurosCompostos(v,t,n) : calcJurosSimples(v,t,n); }
 async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function gerarVencimentos(dataInicio, frequencia, nParcelas) {
@@ -2906,15 +2933,15 @@ async function openContratoModal() {
   openModal('modal-contrato');
 }
 function previewParcelas() {
-  const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value;
+  const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipo=document.getElementById('emp-tipo-juros').value;
   if(!v||!t||!n||!ini){toast('Preencha os campos','error');return;}
-  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipo),vs=gerarVencimentos(ini,freq,n);
   document.getElementById('emp-preview-table').innerHTML=c.map((p,i)=>`<tr><td>${p.numero}</td><td>${fmtData(vs[i])}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');
   document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
   document.getElementById('emp-preview').style.display='block';
 }
 async function salvarContrato() {
-  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value;
+  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
   if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
   // Validar limite do plano
   const planCheck = await checkPlanLimit();
@@ -2933,11 +2960,11 @@ async function salvarContrato() {
     }
   }
   const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
   const actualEid = insertedEmp.id || eid;
 
-  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipoJuros),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-contrato');
@@ -3160,10 +3187,11 @@ async function salvarRenegociacao() {
   const es=await dbSelect('emprestimos'),oe=es.find(x=>x.id===oid);if(!oe)return;
   await dbUpdate('emprestimos',oid,{status:'renegociado'});
   const nid=genId();
-  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:'composto',sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
+  const renTipo=document.getElementById('reneg-tipo-juros')?.value||'simples';
+  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:renTipo,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
   const insertedEmp=await dbInsert('emprestimos',newEmp);
   const actualNid=insertedEmp.id||nid;
-  const c=calcParcelas(v,t,n),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,renTipo),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualNid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-renegociar');toast('Renegociado!');verContrato(actualNid);
@@ -3343,7 +3371,7 @@ function renderChart(pgs) {
 // SIMULADOR
 // ================================================
 let simData=null;
-function simular(){const v=parseFloat(document.getElementById('sim-valor').value),t=parseFloat(document.getElementById('sim-taxa').value),n=parseInt(document.getElementById('sim-parcelas').value);if(!v||!t||!n){toast('Preencha os campos','error');return;}simData=calcJurosCompostos(v,t,n);document.getElementById('sim-resultados').style.display='block';renderSimTab();}
+function simular(){const v=parseFloat(document.getElementById('sim-valor').value),t=parseFloat(document.getElementById('sim-taxa').value),n=parseInt(document.getElementById('sim-parcelas').value),tipo=document.getElementById('sim-tipo-juros').value;if(!v||!t||!n){toast('Preencha os campos','error');return;}simData=calcParcelas(v,t,n,tipo);document.getElementById('sim-resultados').style.display='block';renderSimTab();}
 function renderSimTab(){const d=simData;if(!d)return;const tj=d.reduce((s,p)=>s+p.juros,0),tg=d.reduce((s,p)=>s+p.parcela,0);document.getElementById('sim-resumo').innerHTML=`<div class="stat-card accent"><div class="label">Total Juros</div><div class="value">${moeda(tj)}</div></div><div class="stat-card"><div class="label">Total Geral</div><div class="value">${moeda(tg)}</div></div><div class="stat-card"><div class="label">1ª Parcela</div><div class="value">${moeda(d[0].parcela)}</div></div><div class="stat-card"><div class="label">Última</div><div class="value">${moeda(d[d.length-1].parcela)}</div></div>`;document.getElementById('sim-tabela').innerHTML=d.map(p=>`<tr><td>${p.numero}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');}
 
 // ================================================
