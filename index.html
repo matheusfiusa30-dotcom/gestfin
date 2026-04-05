@@ -3741,51 +3741,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]).catch(e => console.error('Background preload error:', e));
   }
 
-  // Clean OAuth hash fragment to prevent reload loops
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    // Supabase will pick up the token from the hash automatically
-    // After processing, clean the URL to prevent loops on refresh
-    setTimeout(() => {
-      if (window.location.hash.includes('access_token')) {
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }, 1000);
+  // Check existing session FIRST (fastest path for already-logged-in users)
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session?.user) {
+      await bootApp(session.user);
+    }
+  } catch(e) {
+    console.error('Session check error:', e);
   }
 
-  // Set up auth listener FIRST (catches OAuth callback)
-  let authHandled = false;
+  // Auth listener for login/logout/OAuth callback
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth event:', event);
     if (event === 'SIGNED_OUT') {
       currentUser = null;
       currentProfile = null;
       appBooted = false;
-      authHandled = false;
       invalidateAllCache();
       showLanding();
-      return;
-    }
-    if (session?.user && !appBooted) {
-      authHandled = true;
+    } else if (session?.user && !appBooted) {
       await bootApp(session.user);
     }
   });
 
-  // Fallback: check session directly (for page refresh when no auth event fires)
-  setTimeout(async () => {
-    if (appBooted || authHandled) return;
-    try {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session?.user) {
-        await bootApp(session.user);
-      } else {
-        showLanding();
-      }
-    } catch(e) {
-      console.error('Session check error:', e);
-      showLanding();
-    }
-  }, 500);
+  // If nothing happened after 2s, show landing
+  setTimeout(() => {
+    if (!appBooted) showLanding();
+  }, 2000);
+
+  // Clean OAuth hash fragment
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 });
 </script>
 </body>
