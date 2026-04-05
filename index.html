@@ -1369,13 +1369,14 @@ table td { font-size: 0.85rem; }
     </div>
   </div>
   <div class="stats-grid" id="desp-stats"></div>
-  <div class="card">
+  <div class="card desktop-only-card">
     <div class="table-wrapper">
       <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
       <tbody id="despesas-table"></tbody></table>
     </div>
-    <div class="empty-state" id="despesas-empty" style="display:none;"><h3>Nenhuma despesa registrada</h3></div>
   </div>
+  <div id="despesas-mobile-list" class="mobile-only-list"></div>
+  <div class="empty-state" id="despesas-empty" style="display:none;"><h3>Nenhuma despesa registrada</h3></div>
 </section>
 
 <!-- ===== CLIENTES ===== -->
@@ -1462,13 +1463,14 @@ table td { font-size: 0.85rem; }
     <input class="form-control" type="month" id="caixa-mes" style="width:auto;" onchange="renderCaixa()">
   </div>
   <div class="stats-grid" id="caixa-stats"></div>
-  <div class="card">
+  <div class="card desktop-only-card">
     <div class="card-header"><h3>Movimentações</h3></div>
     <div class="table-wrapper">
       <table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Entrada</th><th>Saída</th><th>Saldo</th></tr></thead>
       <tbody id="caixa-table"></tbody></table>
     </div>
   </div>
+  <div id="caixa-mobile-list" class="mobile-only-list"></div>
 </section>
 
 <!-- ===== IA - ANÁLISE DE RISCO ===== -->
@@ -3222,9 +3224,20 @@ async function renderDespesas() {
   const mes=mesInput.value,fil=ds.filter(d=>d.data.startsWith(mes)),total=fil.reduce((s,d)=>s+d.valor,0);
   const cats={};fil.forEach(d=>{cats[d.categoria]=(cats[d.categoria]||0)+d.valor;});
   document.getElementById('desp-stats').innerHTML=`<div class="stat-card danger"><div class="label">Total do Mês</div><div class="value">${moeda(total)}</div></div>`+Object.entries(cats).map(([k,v])=>`<div class="stat-card"><div class="label">${k}</div><div class="value">${moeda(v)}</div></div>`).join('');
-  const tb=document.getElementById('despesas-table'),em=document.getElementById('despesas-empty');
-  if(!fil.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
-  tb.innerHTML=fil.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`<tr><td>${fmtData(d.data)}</td><td>${esc(d.descricao)}</td><td><span class="badge badge-info">${d.categoria}</span></td><td>${moeda(d.valor)}</td><td><button class="btn-icon" onclick="openDespesaModal('${d.id}')">&#9998;</button><button class="btn-icon" onclick="excluirDespesa('${d.id}')">&#128465;</button></td></tr>`).join('');
+  const tb=document.getElementById('despesas-table'),em=document.getElementById('despesas-empty'),mob=document.getElementById('despesas-mobile-list');
+  if(!fil.length){tb.innerHTML='';if(mob)mob.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const sorted=fil.sort((a,b)=>b.data.localeCompare(a.data));
+  tb.innerHTML=sorted.map(d=>`<tr><td>${fmtData(d.data)}</td><td>${esc(d.descricao)}</td><td><span class="badge badge-info">${d.categoria}</span></td><td>${moeda(d.valor)}</td><td><button class="btn-icon" onclick="openDespesaModal('${d.id}')">&#9998;</button><button class="btn-icon" onclick="excluirDespesa('${d.id}')">&#128465;</button></td></tr>`).join('');
+  if(mob) mob.innerHTML=sorted.map(d=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;" onclick="openDespesaModal('${d.id}')">
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <strong style="font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.descricao)}</strong>
+        <span class="badge badge-info" style="flex-shrink:0;">${d.categoria}</span>
+      </div>
+      <div style="font-size:0.7rem;color:var(--text-muted);">${fmtData(d.data)}</div>
+    </div>
+    <div style="font-size:0.95rem;font-weight:700;color:var(--danger);white-space:nowrap;margin-left:8px;">${moeda(d.valor)}</div>
+  </div>`).join('');
 }
 
 // ================================================
@@ -3239,8 +3252,15 @@ async function renderCaixa() {
     <div class="stat-card danger"><div class="label">Saídas</div><div class="value">${moeda(totalSai)}</div><div class="sub">${ds.length} despesa(s)</div></div>
     <div class="stat-card ${saldo>=0?'success':'danger'}"><div class="label">Saldo</div><div class="value">${moeda(saldo)}</div></div>`;
   const movs=[...pgs.map(p=>({data:p.data,desc:'Pagamento recebido',tipo:'entrada',val:p.valor})),...ds.map(d=>({data:d.data,desc:d.descricao,tipo:'saida',val:d.valor}))].sort((a,b)=>a.data.localeCompare(b.data));
-  let acc=0;
+  let acc=0;const mob=document.getElementById('caixa-mobile-list');
   document.getElementById('caixa-table').innerHTML=movs.map(m=>{acc+=m.tipo==='entrada'?m.val:-m.val;return `<tr><td>${fmtData(m.data)}</td><td>${esc(m.desc)}</td><td><span class="badge ${m.tipo==='entrada'?'badge-success':'badge-danger'}">${m.tipo}</span></td><td>${m.tipo==='entrada'?moeda(m.val):''}</td><td>${m.tipo==='saida'?moeda(m.val):''}</td><td>${moeda(acc)}</td></tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações</td></tr>';
+  if(mob){let macc=0;mob.innerHTML=movs.length?movs.map(m=>{macc+=m.tipo==='entrada'?m.val:-m.val;const isEnt=m.tipo==='entrada';return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:0.85rem;font-weight:500;margin-bottom:2px;">${esc(m.desc)}</div>
+      <div style="font-size:0.7rem;color:var(--text-muted);">${fmtData(m.data)} &middot; Saldo: ${moeda(macc)}</div>
+    </div>
+    <div style="font-size:0.95rem;font-weight:700;color:var(${isEnt?'--success':'--danger'});white-space:nowrap;margin-left:8px;">${isEnt?'+':'−'}${moeda(m.val)}</div>
+  </div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações</div>';}
 }
 
 // ================================================
