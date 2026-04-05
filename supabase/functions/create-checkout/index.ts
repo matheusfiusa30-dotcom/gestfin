@@ -9,7 +9,6 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SITE_URL = Deno.env.get('SITE_URL') || 'https://gestfin-alpha.vercel.app'
 
 const PLANOS: Record<string, { nome: string; preco: number; maxContratos: number }> = {
-  teste:        { nome: 'Teste',         preco: 1.00,   maxContratos: 99999 },
   basico:       { nome: 'Básico',        preco: 44.90,  maxContratos: 40 },
   profissional: { nome: 'Profissional',  preco: 89.90,  maxContratos: 100 },
   empresarial:  { nome: 'Empresarial',   preco: 159.90, maxContratos: 99999 },

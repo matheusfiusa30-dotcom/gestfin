@@ -13,7 +13,6 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const PLANOS_MAX: Record<string, number> = {
   basico: 40,
   profissional: 100,
-  teste: 99999,
   empresarial: 99999,
 }
 
