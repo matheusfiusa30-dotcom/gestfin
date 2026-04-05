@@ -1171,6 +1171,7 @@ table td { font-size: 0.85rem; }
   <div class="sidebar-plan-badge" id="sidebar-plan">
     <span class="plan-name" id="sidebar-plan-name">Gratis</span> - <span id="sidebar-plan-count">0/4 contratos</span>
     <div class="sidebar-plan-usage"><div class="fill" id="sidebar-plan-bar" style="width:0%"></div></div>
+    <button id="sidebar-upgrade-btn" onclick="showUpgradeModal(0,0,currentProfile?.plano||'gratis')" style="margin-top:6px;width:100%;padding:5px 0;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:4px;font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.2s;">⬆ Fazer Upgrade</button>
   </div>
   <div class="sidebar-footer">GestFin v2.0 &copy; 2026</div>
 </aside>
@@ -2097,6 +2098,8 @@ async function updateSidebarPlan() {
   if (countEl) countEl.textContent = max >= 99999 ? ativos + ' contratos' : ativos + '/' + max + ' contratos';
   const barEl = document.getElementById('sidebar-plan-bar');
   if (barEl) barEl.style.width = pct + '%';
+  const upgradeBtn = document.getElementById('sidebar-upgrade-btn');
+  if (upgradeBtn) upgradeBtn.style.display = currentProfile?.plano === 'empresarial' ? 'none' : '';
 }
 
 async function checkPlanLimit() {
