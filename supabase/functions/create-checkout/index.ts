@@ -1,17 +1,12 @@
 // Edge Function: create-checkout
-// Usa SDK oficial do Mercado Pago
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import MercadoPago, { Preference } from 'https://esm.sh/mercadopago@2'
 
 const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SITE_URL = Deno.env.get('SITE_URL') || 'https://gestfin-alpha.vercel.app'
-
-const mpClient = new MercadoPago({ accessToken: MP_ACCESS_TOKEN })
-const preferenceClient = new Preference(mpClient)
 
 const PLANOS: Record<string, { nome: string; preco: number; maxContratos: number }> = {
   teste:        { nome: 'Teste',         preco: 1.00,   maxContratos: 99999 },
@@ -21,7 +16,6 @@ const PLANOS: Record<string, { nome: string; preco: number; maxContratos: number
 }
 
 serve(async (req) => {
-  // CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
@@ -44,9 +38,14 @@ serve(async (req) => {
 
     const planData = PLANOS[plano]
 
-    // Criar preferência via SDK oficial
-    const preference = await preferenceClient.create({
-      body: {
+    const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'X-Integrator-Id': 'dev_gestfin',
+      },
+      body: JSON.stringify({
         items: [{
           id: plano,
           title: `GestFin - Plano ${planData.nome}`,
@@ -67,20 +66,29 @@ serve(async (req) => {
         statement_descriptor: 'GESTFIN',
         external_reference: JSON.stringify({ userId, plano }),
         notification_url: `${SUPABASE_URL}/functions/v1/webhook-mp`,
-      }
+      }),
     })
 
-    // Registrar assinatura pendente
+    const mpData = await mpResponse.json()
+
+    if (!mpResponse.ok) {
+      console.error('MP error:', mpData)
+      return new Response(JSON.stringify({ error: 'Erro ao criar checkout' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      })
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     await supabase.from('assinaturas').upsert({
       user_id: userId,
       plano: plano,
       status: 'pending',
       valor: planData.preco,
-      mp_preference_id: preference.id,
+      mp_preference_id: mpData.id,
     }, { onConflict: 'user_id' })
 
-    return new Response(JSON.stringify({ init_point: preference.init_point }), {
+    return new Response(JSON.stringify({ init_point: mpData.init_point }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     })
 
