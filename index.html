@@ -849,7 +849,7 @@ table td { font-size: 0.85rem; }
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Suporte por WhatsApp</li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 1 Usuário incluso</li>
             </ul>
-            <button class="lp-plan-btn outline" onclick="openAuthModal('modal-register')">Assinar Agora</button>
+            <button class="lp-plan-btn outline" onclick="choosePlanAndRegister('basico')">Assinar Agora</button>
           </div>
         </div>
         <!-- Profissional -->
@@ -868,7 +868,7 @@ table td { font-size: 0.85rem; }
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Suporte por WhatsApp</li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 1 Usuário incluso</li>
             </ul>
-            <button class="lp-plan-btn primary" onclick="openAuthModal('modal-register')">Assinar Agora</button>
+            <button class="lp-plan-btn primary" onclick="choosePlanAndRegister('profissional')">Assinar Agora</button>
           </div>
         </div>
         <!-- Empresarial -->
@@ -888,7 +888,7 @@ table td { font-size: 0.85rem; }
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 1 Usuário incluso</li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Contratos ilimitados</li>
             </ul>
-            <button class="lp-plan-btn outline" onclick="openAuthModal('modal-register')">Assinar Agora</button>
+            <button class="lp-plan-btn outline" onclick="choosePlanAndRegister('empresarial')">Assinar Agora</button>
           </div>
         </div>
       </div>
@@ -1973,6 +1973,7 @@ function isConnected() { return supabaseClient !== null; }
 let currentUser = null;
 let currentProfile = null;
 let appBooted = false;
+let pendingPlano = null; // plano escolhido na landing page antes de cadastrar
 
 const PLANOS = {
   gratis:       { nome:'Grátis',        maxContratos:4,     preco:0 },
@@ -2117,20 +2118,31 @@ function closeUpgradeModal() {
 }
 
 async function iniciarCheckout(plano) {
+  if (!currentUser) {
+    pendingPlano = plano;
+    openAuthModal('modal-register');
+    return;
+  }
   try {
+    toast('Redirecionando para pagamento...', 'info');
     const { data, error } = await supabaseClient.functions.invoke('create-checkout', {
-      body: { plano }
+      body: { plano, userId: currentUser.id, userEmail: currentUser.email }
     });
     if (error) throw error;
     if (data?.init_point) {
       window.location.href = data.init_point;
     } else {
-      toast('Checkout em implementacao. Entre em contato pelo WhatsApp.', 'warning');
+      toast('Erro ao criar checkout. Tente novamente.', 'error');
     }
   } catch(e) {
     console.error('Checkout error:', e);
-    toast('Pagamento em implementação. Entre em contato pelo WhatsApp para assinar.', 'warning');
+    toast('Erro ao processar pagamento. Tente novamente.', 'error');
   }
+}
+
+function choosePlanAndRegister(plano) {
+  pendingPlano = plano;
+  openAuthModal('modal-register');
 }
 
 // Auth modal handlers
@@ -2161,7 +2173,13 @@ async function handleLogin() {
   try {
     await signIn(email, pw);
     closeAuthModal('modal-login');
-    toast('Login realizado com sucesso!');
+    if (pendingPlano) {
+      const plano = pendingPlano;
+      pendingPlano = null;
+      setTimeout(() => iniciarCheckout(plano), 500);
+    } else {
+      toast('Login realizado com sucesso!');
+    }
   } catch(e) {
     showAuthError('login-error', e.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : (e.message || 'Erro ao fazer login.'));
   }
@@ -2181,7 +2199,14 @@ async function handleRegister() {
       showAuthSuccess('register-success', 'Conta criada! Verifique seu e-mail para confirmar o cadastro.');
     } else {
       closeAuthModal('modal-register');
-      toast('Conta criada com sucesso!');
+      if (pendingPlano) {
+        const plano = pendingPlano;
+        pendingPlano = null;
+        toast('Conta criada! Redirecionando para pagamento...');
+        setTimeout(() => iniciarCheckout(plano), 500);
+      } else {
+        toast('Conta criada com sucesso!');
+      }
     }
   } catch(e) {
     showAuthError('register-error', e.message || 'Erro ao criar conta.');
@@ -3623,8 +3648,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Check return from Mercado Pago
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('status') === 'approved') {
-    toast('Pagamento aprovado! Seu plano foi atualizado.', 'success');
+  const mpStatus = urlParams.get('status');
+  if (mpStatus) {
+    if (mpStatus === 'approved') {
+      toast('Pagamento aprovado! Seu plano foi atualizado.', 'success');
+      // Force reload profile to get updated plan from webhook
+      setTimeout(async () => {
+        if (currentUser) {
+          await loadProfile();
+          updateSidebarPlan();
+          updateSidebarUser();
+        }
+      }, 2000);
+    } else if (mpStatus === 'pending') {
+      toast('Pagamento pendente. Seu plano será atualizado após confirmação.', 'warning');
+    } else {
+      toast('Pagamento não concluído. Tente novamente.', 'error');
+    }
     window.history.replaceState({}, '', window.location.pathname);
   }
 
