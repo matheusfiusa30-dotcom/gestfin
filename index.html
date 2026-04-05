@@ -784,10 +784,6 @@ table td { font-size: 0.85rem; }
 .modal-anexo-view .modal { background: transparent; border: none; max-width: 95vw; max-height: 95vh; display: flex; align-items: center; justify-content: center; box-shadow: none; }
 .modal-anexo-view img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--radius); }
 .modal-anexo-view .anexo-close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 210; }
-.cheque-anexo-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-.cheque-anexo-preview { width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
-.cheque-anexo-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; }
-.cheque-anexo-btn:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 </head>
@@ -1389,17 +1385,13 @@ table td { font-size: 0.85rem; }
 <section class="page" id="page-cheques">
   <div class="mobile-page-header" style="display:none;">
     <button class="back-btn" onclick="mobileNav('mobile-home')"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
-    <span class="page-title has-action">Cheques</span>
-    <button class="header-action" onclick="openChequeModal()">+ Novo</button>
+    <span class="page-title">Cheques</span>
   </div>
   <div class="page-header">
     <h2>Cheques</h2>
-    <div style="display:flex;gap:8px;">
-      <select class="form-control" id="cheque-filtro" style="width:auto;" onchange="renderCheques()">
-        <option value="all">Todos</option><option value="pendente">Pendentes</option><option value="compensado">Compensados</option><option value="devolvido">Devolvidos</option>
-      </select>
-      <button class="btn btn-primary" onclick="openChequeModal()">+ Novo Cheque</button>
-    </div>
+    <select class="form-control" id="cheque-filtro" style="width:auto;" onchange="renderCheques()">
+      <option value="all">Todos</option><option value="pendente">Pendentes</option><option value="compensado">Compensados</option><option value="devolvido">Devolvidos</option>
+    </select>
   </div>
   <div class="card">
     <div class="table-wrapper">
@@ -2003,17 +1995,6 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Bom Para *</label><input class="form-control" type="date" id="cheque-bompara"></div>
       </div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cheque-obs"></textarea></div>
-      <div class="form-group">
-        <label>Foto do Cheque</label>
-        <div class="cheque-anexo-row" id="cheque-anexo-row">
-          <button type="button" class="cheque-anexo-btn" onclick="document.getElementById('cheque-foto-input').click()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            Tirar foto / Selecionar
-          </button>
-          <input type="file" id="cheque-foto-input" accept="image/*" capture="environment" style="display:none;" onchange="previewChequeFoto(this)">
-          <img id="cheque-foto-preview" class="cheque-anexo-preview" style="display:none;" onclick="verAnexoBase64(this.src)">
-        </div>
-      </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-cheque')">Cancelar</button><button class="btn btn-primary" onclick="salvarCheque()">Salvar</button></div>
   </div>
@@ -3452,9 +3433,6 @@ async function openChequeModal(id) {
   document.getElementById('cheque-contrato').innerHTML='<option value="">Nenhum</option>';
   if(id){const chs=await dbSelect('cheques');const ch=chs.find(x=>x.id===id);if(ch){document.getElementById('modal-cheque-titulo').textContent='Editar Cheque';document.getElementById('cheque-id').value=ch.id;document.getElementById('cheque-cliente').value=ch.clienteId;document.getElementById('cheque-contrato').value=ch.contratoId||'';document.getElementById('cheque-numero').value=ch.numero;document.getElementById('cheque-banco').value=ch.banco||'';document.getElementById('cheque-agencia').value=ch.agencia||'';document.getElementById('cheque-valor').value=ch.valor;document.getElementById('cheque-emissao').value=ch.emissao||'';document.getElementById('cheque-bompara').value=ch.bomPara;document.getElementById('cheque-obs').value=ch.obs||'';}}
   else document.getElementById('modal-cheque-titulo').textContent='Novo Cheque';
-  document.getElementById('cheque-foto-input').value='';
-  document.getElementById('cheque-foto-preview').style.display='none';
-  document.getElementById('cheque-foto-preview').src='';
   openModal('modal-cheque');
 }
 async function salvarCheque() {
@@ -3462,7 +3440,7 @@ async function salvarCheque() {
   if(!cid||!num||!val||!bp){toast('Preencha os campos obrigatórios','error');return;}
   const id=document.getElementById('cheque-id').value;
   const d={clienteId:cid,contratoId:document.getElementById('cheque-contrato').value,numero:num,banco:document.getElementById('cheque-banco').value.trim(),agencia:document.getElementById('cheque-agencia').value.trim(),valor:val,emissao:document.getElementById('cheque-emissao').value,bomPara:bp,obs:document.getElementById('cheque-obs').value.trim(),status:'pendente'};
-  if(id){await dbUpdate('cheques',id,d);await salvarFotoCheque(id);toast('Cheque atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('cheques',d);await salvarFotoCheque(d.id);toast('Cheque registrado!');}
+  if(id){await dbUpdate('cheques',id,d);toast('Cheque atualizado!');}else{d.id=genId();d.criadoEm=today();await dbInsert('cheques',d);toast('Cheque registrado!');}
   closeModal('modal-cheque');renderCheques();
 }
 async function chequeAction(id,action) {
@@ -3569,23 +3547,6 @@ async function verAnexoBase64(idOrSrc){
   }
   document.getElementById('anexo-view-img').src=src;
   openModal('modal-anexo-view');
-}
-// Preview foto cheque no modal
-function previewChequeFoto(input){
-  if(!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const prev=document.getElementById('cheque-foto-preview');
-    prev.src=e.target.result;prev.style.display='block';
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-async function salvarFotoCheque(chequeId){
-  const input=document.getElementById('cheque-foto-input');
-  if(!input.files[0])return;
-  const base64=await comprimirImagem(input.files[0]);
-  const rec={id:genId(),tipo:'cheque',refId:chequeId,nome:input.files[0].name,mimeType:input.files[0].type||'image/jpeg',dados:base64,criadoEm:today()};
-  await dbInsert('anexos',rec);
 }
 
 // ================================================
