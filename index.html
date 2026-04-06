@@ -1909,10 +1909,12 @@ table td { font-size: 0.85rem; }
         </div>
         <div style="margin-top:8px;color:var(--text-secondary);font-size:0.8rem;" id="emp-preview-total"></div>
       </div>
-      <!-- ANEXOS DO CONTRATO (visível ao editar) -->
-      <div id="modal-contrato-anexos" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+      <!-- ANEXOS DO CONTRATO -->
+      <div id="modal-contrato-anexos" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
         <label style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;display:block;margin-bottom:8px;">Documentos Anexados</label>
-        <div class="anexos-grid" id="modal-contrato-anexos-grid"></div>
+        <div class="anexos-grid" id="modal-contrato-anexos-grid">
+          <div class="anexo-add" onclick="anexarDocumentoTemp()"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>Anexar</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-contrato')">Cancelar</button><button class="btn btn-primary" onclick="salvarContrato()">Confirmar</button></div>
@@ -3112,8 +3114,9 @@ function openContratoTipo(tipo) {
     document.getElementById('tc-resumo').style.display='none';
     document.getElementById('tc-pessoa').innerHTML=opts;
   }
-  // Esconder anexos ao criar novo contrato
-  document.getElementById('modal-contrato-anexos').style.display='none';
+  // Limpar anexos temporários ao criar novo contrato
+  window._anexosTemp=[];
+  renderAnexosModal(null);
   openModal('modal-contrato');
 }
 
@@ -3168,33 +3171,73 @@ async function editarContrato() {
     document.getElementById('emp-preview').style.display='none';
   }
 
-  // Mostrar e carregar anexos
-  document.getElementById('modal-contrato-anexos').style.display='block';
-  carregarAnexosModal(eid);
+  // Carregar anexos existentes
+  window._anexosTemp=[];
+  renderAnexosModal(eid);
   openModal('modal-contrato');
 }
 
-async function carregarAnexosModal(eid){
-  const todos=await dbSelect('anexos');
-  const anx=todos.filter(a=>a.tipo==='contrato'&&a.refId===eid);
+async function renderAnexosModal(eid){
   const grid=document.getElementById('modal-contrato-anexos-grid');
-  grid.innerHTML=anx.map(a=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.id}')"><img src="${a.dados}" alt="${esc(a.nome)}"><button class="anexo-del" onclick="event.stopPropagation();excluirAnexo('${a.id}','contrato','${eid}');carregarAnexosModal('${eid}')">&times;</button></div>`).join('');
-  grid.innerHTML+=`<div class="anexo-add" onclick="anexarDocumentoModal('${eid}')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>Anexar</div>`;
+  let html='';
+  // Anexos já salvos no banco (edição)
+  if(eid){
+    const todos=await dbSelect('anexos');
+    const anx=todos.filter(a=>a.tipo==='contrato'&&a.refId===eid);
+    html+=anx.map(a=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.id}')"><img src="${a.dados}" alt="${esc(a.nome)}"><button class="anexo-del" onclick="event.stopPropagation();excluirAnexoModal('${a.id}','${eid}')">&times;</button></div>`).join('');
+  }
+  // Anexos temporários (novo contrato, ainda não salvos)
+  if(window._anexosTemp&&window._anexosTemp.length){
+    html+=window._anexosTemp.map((a,i)=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.dados}')"><img src="${a.dados}" alt="${esc(a.nome)}"><button class="anexo-del" onclick="event.stopPropagation();removerAnexoTemp(${i})">&times;</button></div>`).join('');
+  }
+  html+=`<div class="anexo-add" onclick="anexarDocumentoTemp()"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>Anexar</div>`;
+  grid.innerHTML=html;
 }
 
-function anexarDocumentoModal(eid){
+async function excluirAnexoModal(id,eid){
+  if(!await showConfirm('Excluir este documento?'))return;
+  await dbDelete('anexos',id);toast('Documento excluído!');
+  renderAnexosModal(eid);
+  // Atualizar detalhe se estiver aberto
+  if(document.getElementById('contrato-anexos'))carregarAnexosContrato(eid);
+}
+
+function anexarDocumentoTemp(){
   const inp=document.createElement('input');
   inp.type='file';inp.accept='image/*';inp.capture='environment';
   inp.onchange=async function(){
     if(!this.files[0])return;
     toast('Comprimindo imagem...');
     const base64=await comprimirImagem(this.files[0]);
-    const rec={id:genId(),tipo:'contrato',refId:eid,nome:this.files[0].name,mimeType:this.files[0].type||'image/jpeg',dados:base64,criadoEm:today()};
-    await dbInsert('anexos',rec);
-    toast('Documento anexado!');
-    carregarAnexosModal(eid);
+    const rec={nome:this.files[0].name,mimeType:this.files[0].type||'image/jpeg',dados:base64};
+    // Se está editando (emp-id preenchido), salva direto no banco
+    const editId=document.getElementById('emp-id').value;
+    if(editId){
+      await dbInsert('anexos',{id:genId(),tipo:'contrato',refId:editId,...rec,criadoEm:today()});
+      toast('Documento anexado!');
+      renderAnexosModal(editId);
+    } else {
+      // Novo contrato — guarda temporário
+      if(!window._anexosTemp)window._anexosTemp=[];
+      window._anexosTemp.push(rec);
+      toast('Documento adicionado!');
+      renderAnexosModal(null);
+    }
   };
   inp.click();
+}
+
+function removerAnexoTemp(idx){
+  if(window._anexosTemp)window._anexosTemp.splice(idx,1);
+  renderAnexosModal(null);
+}
+
+async function salvarAnexosTemp(contratoId){
+  if(!window._anexosTemp||!window._anexosTemp.length)return;
+  for(const a of window._anexosTemp){
+    await dbInsert('anexos',{id:genId(),tipo:'contrato',refId:contratoId,nome:a.nome,mimeType:a.mimeType,dados:a.dados,criadoEm:today()});
+  }
+  window._anexosTemp=[];
 }
 
 function previewParcelaUnica() {
@@ -3265,6 +3308,8 @@ async function salvarContrato() {
   const c=calcParcelas(v,t,n,tipoJuros,freq),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
+  // Salvar anexos temporários
+  await salvarAnexosTemp(actualEid);
   closeModal('modal-contrato');toast('Contrato criado!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();updateSidebarPlan();
@@ -3302,6 +3347,7 @@ async function salvarParcelaUnica(cl) {
   const insertedEmp=await dbInsert('emprestimos',empRecord);
   const actualEid=insertedEmp.id||eid;
   await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:v,valorJuros:juros,valorTotal:total,dataVencimento:vencStr,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
+  await salvarAnexosTemp(actualEid);
   closeModal('modal-contrato');toast('Parcela única criada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();updateSidebarPlan();
@@ -3323,6 +3369,7 @@ async function salvarTrocaCheques(cl) {
   // Registrar cheque na aba cheques (vinculado ao cliente)
   const numCheque=document.getElementById('tc-num-cheque').value.trim()||'S/N';
   await dbInsert('cheques',{id:genId(),clienteId:pid,contratoId:actualEid,numero:numCheque,banco:document.getElementById('tc-banco').value.trim(),agencia:document.getElementById('tc-agencia').value.trim(),valor:vCheque,emissao:ini,bomPara:bomPara,status:'pendente',obs:`Troca de cheque`,criadoEm:today()});
+  await salvarAnexosTemp(actualEid);
   closeModal('modal-contrato');toast('Troca de cheque registrada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');invalidateCache('cheques');
   await renderContratos();updateSidebarPlan();
