@@ -2891,6 +2891,11 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ================================================
 // CÁLCULOS FINANCEIROS
 // ================================================
+function taxaPorPeriodo(taxaMes, freq) {
+  // Converte taxa mensal para taxa por período baseado na frequência
+  const dias = { diario: 1, semanal: 7, quinzenal: 15, mensal: 30 };
+  return taxaMes * (dias[freq] || 30) / 30;
+}
 function calcJurosSimples(v,t,n) {
   const i=t/100, totalJuros=v*i*n, totalGeral=v+totalJuros, pmt=totalGeral/n, ps=[];
   let s=v;
@@ -2898,7 +2903,7 @@ function calcJurosSimples(v,t,n) {
   return ps;
 }
 function calcJurosCompostos(v,t,n) { const i=t/100, pmt=v*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1), ps=[]; let s=v; for(let x=1;x<=n;x++){const j=s*i,a=pmt-j;s-=a;ps.push({numero:x,amortizacao:a,juros:j,parcela:pmt,saldo:Math.max(s,0)});} return ps; }
-function calcParcelas(v,t,n,tipo) { return tipo==='composto' ? calcJurosCompostos(v,t,n) : calcJurosSimples(v,t,n); }
+function calcParcelas(v,t,n,tipo,freq) { const tp=taxaPorPeriodo(t,freq||'mensal'); return tipo==='composto' ? calcJurosCompostos(v,tp,n) : calcJurosSimples(v,tp,n); }
 async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function gerarVencimentos(dataInicio, frequencia, nParcelas) {
@@ -3123,7 +3128,7 @@ function previewTrocaCheque() {
 function previewParcelas() {
   const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipo=document.getElementById('emp-tipo-juros').value;
   if(!v||!t||!n||!ini){toast('Preencha os campos','error');return;}
-  const c=calcParcelas(v,t,n,tipo),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipo,freq),vs=gerarVencimentos(ini,freq,n);
   document.getElementById('emp-preview-table').innerHTML=c.map((p,i)=>`<tr><td>${p.numero}</td><td>${fmtData(vs[i])}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');
   document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
   document.getElementById('emp-preview').style.display='block';
@@ -3158,7 +3163,7 @@ async function salvarContrato() {
   const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
   const actualEid = insertedEmp.id || eid;
-  const c=calcParcelas(v,t,n,tipoJuros),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipoJuros,freq),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-contrato');toast('Contrato criado!');
@@ -3417,7 +3422,7 @@ async function salvarRenegociacao() {
   const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:renTipo,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
   const insertedEmp=await dbInsert('emprestimos',newEmp);
   const actualNid=insertedEmp.id||nid;
-  const c=calcParcelas(v,t,n,renTipo),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,renTipo,freq),vs=gerarVencimentos(ini,freq,n);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualNid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-renegociar');toast('Renegociado!');verContrato(actualNid);
