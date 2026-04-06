@@ -1343,6 +1343,7 @@ table td { font-size: 0.85rem; }
     <span class="page-title">Detalhes</span>
   </div>
   <div class="mobile-detail-actions" style="display:none;">
+    <button class="btn btn-ghost" onclick="editarContrato()">Editar</button>
     <button class="btn btn-ai" onclick="analisarRiscoContrato()">IA Risco</button>
     <button class="btn btn-warning" id="mob-btn-reneg" onclick="openRenegociarModal()">Renegociar</button>
   </div>
@@ -1350,6 +1351,7 @@ table td { font-size: 0.85rem; }
     <h2 id="emp-detalhe-titulo">Detalhes do Contrato</h2>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost" onclick="navigateTo('contratos')">Voltar</button>
+      <button class="btn btn-ghost btn-sm" onclick="editarContrato()">&#9998; Editar</button>
       <button class="btn btn-ai btn-sm" onclick="analisarRiscoContrato()">IA Analisar Risco</button>
       <button class="btn btn-warning btn-sm" id="btn-renegociar" onclick="openRenegociarModal()">Renegociar</button>
     </div>
@@ -1371,13 +1373,8 @@ table td { font-size: 0.85rem; }
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><h3>Documentos Anexados</h3></div>
-    <div class="anexos-grid" id="contrato-anexos">
-      <div class="anexo-add" onclick="anexarDocumento('contrato')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
-        Anexar
-      </div>
-    </div>
+    <div class="card-header"><h3>Documentos Anexados</h3><button class="btn btn-ghost btn-sm" onclick="editarContrato()">+ Anexar</button></div>
+    <div class="anexos-grid" id="contrato-anexos"></div>
   </div>
 </section>
 
@@ -1911,6 +1908,11 @@ table td { font-size: 0.85rem; }
           <table><thead><tr><th>#</th><th>Venc.</th><th>Amort.</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr></thead><tbody id="emp-preview-table"></tbody></table>
         </div>
         <div style="margin-top:8px;color:var(--text-secondary);font-size:0.8rem;" id="emp-preview-total"></div>
+      </div>
+      <!-- ANEXOS DO CONTRATO (visível ao editar) -->
+      <div id="modal-contrato-anexos" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+        <label style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;display:block;margin-bottom:8px;">Documentos Anexados</label>
+        <div class="anexos-grid" id="modal-contrato-anexos-grid"></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-contrato')">Cancelar</button><button class="btn btn-primary" onclick="salvarContrato()">Confirmar</button></div>
@@ -3110,7 +3112,89 @@ function openContratoTipo(tipo) {
     document.getElementById('tc-resumo').style.display='none';
     document.getElementById('tc-pessoa').innerHTML=opts;
   }
+  // Esconder anexos ao criar novo contrato
+  document.getElementById('modal-contrato-anexos').style.display='none';
   openModal('modal-contrato');
+}
+
+async function editarContrato() {
+  const eid=currentEmpId;if(!eid)return;
+  const es=await dbSelect('emprestimos'),e=es.find(x=>x.id===eid);if(!e)return;
+  const cl=await dbSelect('clientes');
+  window._contratoClientes=cl;
+  const opts='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+
+  // Esconder todos os campos de tipo
+  document.getElementById('campos-comum').style.display='none';
+  document.getElementById('campos-parcela-unica').style.display='none';
+  document.getElementById('campos-troca-cheques').style.display='none';
+
+  const sistema=e.sistema||'price';
+  document.getElementById('emp-id').value=eid;
+
+  if(sistema==='parcela-unica'){
+    document.getElementById('emp-tipo-contrato').value='parcela-unica';
+    document.getElementById('campos-parcela-unica').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Editar Contrato - Parcela Única';
+    document.getElementById('pu-pessoa').innerHTML=opts;
+    document.getElementById('pu-pessoa').value=e.pessoaId;
+    document.getElementById('pu-valor').value=e.valor;
+    document.getElementById('pu-taxa').value=e.taxaJuros;
+    document.getElementById('pu-inicio').value=e.dataInicio;
+    document.getElementById('pu-obs').value=e.obs||'';
+  } else if(sistema==='troca-cheques'){
+    document.getElementById('emp-tipo-contrato').value='troca-cheques';
+    document.getElementById('campos-troca-cheques').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Editar Contrato - Troca de Cheques';
+    document.getElementById('tc-pessoa').innerHTML=opts;
+    document.getElementById('tc-pessoa').value=e.pessoaId;
+    document.getElementById('tc-valor-cheque').value=e.valor;
+    document.getElementById('tc-taxa').value=e.taxaJuros;
+    document.getElementById('tc-inicio').value=e.dataInicio;
+    document.getElementById('tc-obs').value=e.obs||'';
+  } else {
+    document.getElementById('emp-tipo-contrato').value='comum';
+    document.getElementById('campos-comum').style.display='block';
+    document.getElementById('modal-emp-titulo').textContent='Editar Contrato';
+    document.getElementById('emp-pessoa').innerHTML=opts;
+    document.getElementById('emp-pessoa').value=e.pessoaId;
+    document.getElementById('emp-valor').value=e.valor;
+    document.getElementById('emp-taxa').value=e.taxaJuros;
+    document.getElementById('emp-nparcelas').value=e.numParcelas;
+    document.getElementById('emp-tipo-juros').value=e.tipoJuros||'simples';
+    document.getElementById('emp-inicio').value=e.dataInicio;
+    document.getElementById('emp-frequencia').value=e.frequencia||'mensal';
+    document.getElementById('emp-obs').value=e.obs||'';
+    document.getElementById('emp-preview').style.display='none';
+  }
+
+  // Mostrar e carregar anexos
+  document.getElementById('modal-contrato-anexos').style.display='block';
+  carregarAnexosModal(eid);
+  openModal('modal-contrato');
+}
+
+async function carregarAnexosModal(eid){
+  const todos=await dbSelect('anexos');
+  const anx=todos.filter(a=>a.tipo==='contrato'&&a.refId===eid);
+  const grid=document.getElementById('modal-contrato-anexos-grid');
+  grid.innerHTML=anx.map(a=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.id}')"><img src="${a.dados}" alt="${esc(a.nome)}"><button class="anexo-del" onclick="event.stopPropagation();excluirAnexo('${a.id}','contrato','${eid}');carregarAnexosModal('${eid}')">&times;</button></div>`).join('');
+  grid.innerHTML+=`<div class="anexo-add" onclick="anexarDocumentoModal('${eid}')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>Anexar</div>`;
+}
+
+function anexarDocumentoModal(eid){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=async function(){
+    if(!this.files[0])return;
+    toast('Comprimindo imagem...');
+    const base64=await comprimirImagem(this.files[0]);
+    const rec={id:genId(),tipo:'contrato',refId:eid,nome:this.files[0].name,mimeType:this.files[0].type||'image/jpeg',dados:base64,criadoEm:today()};
+    await dbInsert('anexos',rec);
+    toast('Documento anexado!');
+    carregarAnexosModal(eid);
+  };
+  inp.click();
 }
 
 function previewParcelaUnica() {
@@ -3144,6 +3228,12 @@ function previewParcelas() {
 }
 async function salvarContrato() {
   const tipoContrato=document.getElementById('emp-tipo-contrato').value;
+  const editId=document.getElementById('emp-id').value;
+
+  // Se é edição, atualizar dados sem recriar parcelas
+  if(editId){
+    return salvarEdicaoContrato(editId,tipoContrato);
+  }
 
   // Validar limite do plano
   const planCheck = await checkPlanLimit();
@@ -3157,7 +3247,7 @@ async function salvarContrato() {
     return salvarTrocaCheques(cl);
   }
 
-  // CONTRATO COMUM
+  // CONTRATO COMUM - NOVO
   const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
   if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
   const cliente=cl.find(x=>x.id===pid);
@@ -3181,6 +3271,24 @@ async function salvarContrato() {
   const primParcela=c[0],valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
   const freqLabel={diario:'Diário',semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
   setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel), 300);
+}
+
+async function salvarEdicaoContrato(eid,tipoContrato){
+  // Edição: atualizar apenas obs e dados básicos, sem recriar parcelas
+  const upd={};
+  if(tipoContrato==='parcela-unica'){
+    upd.obs=document.getElementById('pu-obs').value.trim();
+  } else if(tipoContrato==='troca-cheques'){
+    upd.obs=document.getElementById('tc-obs').value.trim();
+  } else {
+    upd.obs=document.getElementById('emp-obs').value.trim();
+    upd.taxaJuros=parseFloat(document.getElementById('emp-taxa').value);
+    upd.tipoJuros=document.getElementById('emp-tipo-juros').value;
+  }
+  await dbUpdate('emprestimos',eid,upd);
+  closeModal('modal-contrato');toast('Contrato atualizado!');
+  invalidateCache('emprestimos');
+  verContrato(eid);
 }
 
 async function salvarParcelaUnica(cl) {
@@ -3544,8 +3652,8 @@ async function carregarAnexosContrato(eid){
   const todos=await dbSelect('anexos');
   const anx=todos.filter(a=>a.tipo==='contrato'&&a.refId===eid);
   const grid=document.getElementById('contrato-anexos');
-  grid.innerHTML=anx.map(a=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.id}')"><img src="${a.dados}" alt="${esc(a.nome)}"><button class="anexo-del" onclick="event.stopPropagation();excluirAnexo('${a.id}','contrato','${eid}')">&times;</button></div>`).join('');
-  grid.innerHTML+=`<div class="anexo-add" onclick="anexarDocumento('contrato','${eid}')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>Anexar</div>`;
+  if(!anx.length){grid.innerHTML='<span style="color:var(--text-muted);font-size:0.8rem;">Nenhum documento. Clique em "Editar" para anexar.</span>';return;}
+  grid.innerHTML=anx.map(a=>`<div class="anexo-thumb" onclick="verAnexoBase64('${a.id}')"><img src="${a.dados}" alt="${esc(a.nome)}"></div>`).join('');
 }
 async function excluirAnexo(id,tipo,refId){
   if(!await showConfirm('Excluir este documento?'))return;
