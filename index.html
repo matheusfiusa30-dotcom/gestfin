@@ -335,6 +335,21 @@ table td { font-size: 0.85rem; }
   }
   .mobile-theme-btn:active { transform: scale(0.85); }
   .mobile-theme-btn svg { width: 20px; height: 20px; }
+  .mobile-top-actions { display: flex; align-items: center; gap: 10px; position: relative; }
+  .mobile-avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); color: #fff; font-weight: 700; font-size: 0.9rem; -webkit-tap-highlight-color: transparent; }
+  .mobile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .mobile-profile-dropdown { position: absolute; top: 46px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 220px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 200; display: none; }
+  .mobile-profile-dropdown.active { display: block; }
+  .mobile-profile-dropdown .prof-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .mobile-profile-dropdown .prof-avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; font-weight: 700; flex-shrink: 0; }
+  .mobile-profile-dropdown .prof-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .mobile-profile-dropdown .prof-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+  .mobile-profile-dropdown .prof-email { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+  .mobile-profile-dropdown .prof-plan { display: inline-block; font-size: 0.7rem; padding: 3px 10px; border-radius: 10px; background: rgba(46,125,50,0.15); color: var(--success); font-weight: 600; margin-top: 6px; text-transform: capitalize; }
+  .mobile-profile-dropdown .prof-actions { display: flex; flex-direction: column; gap: 8px; }
+  .mobile-profile-dropdown .prof-btn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); border: none; background: var(--bg-hover); color: var(--text-primary); font-size: 0.85rem; cursor: pointer; transition: background var(--transition); }
+  .mobile-profile-dropdown .prof-btn:hover { background: var(--border); }
+  .mobile-profile-dropdown .prof-btn.danger { color: var(--danger); }
   .mobile-home .mobile-header .greeting { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
   .mobile-home .mobile-header .balance-row {
     display: flex; justify-content: space-between; margin-top: 16px; gap: 8px;
@@ -1694,10 +1709,33 @@ table td { font-size: 0.85rem; }
   <div class="mobile-header">
     <div class="mobile-top-row">
       <h1>GestFin</h1>
-      <button class="mobile-theme-btn" onclick="toggleTheme();updateMobileThemeIcon();" id="mob-theme-btn">
-        <svg id="mob-sun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        <svg id="mob-moon-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-      </button>
+      <div class="mobile-top-actions">
+        <button class="mobile-theme-btn" onclick="toggleTheme();updateMobileThemeIcon();" id="mob-theme-btn">
+          <svg id="mob-sun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg id="mob-moon-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+        <div class="mobile-avatar" id="mob-avatar" onclick="toggleMobileProfile()">?</div>
+        <div class="mobile-profile-dropdown" id="mob-profile-dropdown">
+          <div class="prof-header">
+            <div class="prof-avatar" id="mob-prof-avatar">?</div>
+            <div>
+              <div class="prof-name" id="mob-prof-name">Carregando...</div>
+              <div class="prof-email" id="mob-prof-email"></div>
+              <span class="prof-plan" id="mob-prof-plan">gratis</span>
+            </div>
+          </div>
+          <div class="prof-actions">
+            <button class="prof-btn" onclick="trocarFotoPerfil()">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Trocar foto
+            </button>
+            <button class="prof-btn danger" onclick="handleLogout()">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              Sair
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="greeting" id="mobile-greeting">Bom dia!</div>
     <div class="balance-row" id="mobile-balances">
@@ -2259,14 +2297,60 @@ function updateSidebarUser() {
   if (!currentUser) return;
   const nome = currentProfile?.nome || currentUser.user_metadata?.nome || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || '';
   const email = currentUser.email || '';
-  const avatar = nome ? nome.charAt(0).toUpperCase() : '?';
+  const inicial = nome ? nome.charAt(0).toUpperCase() : '?';
+  const avatarUrl = currentProfile?.avatar || null;
+
+  // Sidebar desktop
   const el = document.getElementById('sidebar-avatar');
-  if (el) el.textContent = avatar;
+  if (el) { if(avatarUrl){el.innerHTML=`<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}else{el.textContent=inicial;} }
   const nameEl = document.getElementById('sidebar-user-name');
   if (nameEl) nameEl.textContent = nome || email;
   const emailEl = document.getElementById('sidebar-user-email');
   if (emailEl) emailEl.textContent = email;
+
+  // Mobile avatar
+  const mobAv = document.getElementById('mob-avatar');
+  if(mobAv){ if(avatarUrl){mobAv.innerHTML=`<img src="${avatarUrl}">`;}else{mobAv.textContent=inicial;} }
+  const mobProfAv = document.getElementById('mob-prof-avatar');
+  if(mobProfAv){ if(avatarUrl){mobProfAv.innerHTML=`<img src="${avatarUrl}">`;}else{mobProfAv.textContent=inicial;} }
+  const mobName = document.getElementById('mob-prof-name');
+  if(mobName) mobName.textContent = nome || email;
+  const mobEmail = document.getElementById('mob-prof-email');
+  if(mobEmail) mobEmail.textContent = email;
+  const mobPlan = document.getElementById('mob-prof-plan');
+  if(mobPlan){ const planoLabel={gratis:'Grátis',basico:'Básico',profissional:'Profissional',empresarial:'Empresarial',teste:'Teste'}; mobPlan.textContent=planoLabel[currentProfile?.plano]||currentProfile?.plano||'Grátis'; }
 }
+
+function toggleMobileProfile(){
+  const dd=document.getElementById('mob-profile-dropdown');
+  dd.classList.toggle('active');
+}
+
+function trocarFotoPerfil(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='user';
+  inp.onchange=async function(){
+    if(!this.files[0])return;
+    toast('Atualizando foto...');
+    const base64=await comprimirImagem(this.files[0],200,0.8);
+    await supabaseClient.from('perfis').update({avatar:base64}).eq('id',currentUser.id);
+    currentProfile.avatar=base64;
+    updateSidebarUser();
+    toast('Foto atualizada!');
+    // Fechar dropdown
+    document.getElementById('mob-profile-dropdown').classList.remove('active');
+  };
+  inp.click();
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click',function(e){
+  const dd=document.getElementById('mob-profile-dropdown');
+  const av=document.getElementById('mob-avatar');
+  if(dd&&dd.classList.contains('active')&&!dd.contains(e.target)&&e.target!==av&&!av.contains(e.target)){
+    dd.classList.remove('active');
+  }
+});
 
 async function updateSidebarPlan() {
   if (!currentProfile) return;
