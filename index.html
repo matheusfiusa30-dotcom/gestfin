@@ -2328,7 +2328,7 @@ function toggleMobileProfile(){
 
 function trocarFotoPerfil(){
   const inp=document.createElement('input');
-  inp.type='file';inp.accept='image/*';inp.capture='user';
+  inp.type='file';inp.accept='image/*';
   inp.onchange=async function(){
     if(!this.files[0])return;
     toast('Atualizando foto...');
