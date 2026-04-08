@@ -62,6 +62,30 @@
   --sidebar-hover: #2a2e3d;
   --sidebar-active: rgba(108,92,231,0.1);
 }
+/* TEMA ROXO */
+[data-theme="purple"] {
+  --bg-primary: #1a1025;
+  --bg-secondary: #231533;
+  --bg-card: #2d1b42;
+  --bg-hover: #3a2455;
+  --bg-input: #1e1230;
+  --border: #4a2d6e;
+  --text-primary: #ede0f7;
+  --text-secondary: #b39dcc;
+  --text-muted: #7a6199;
+  --accent: #7c3aed;
+  --accent-light: #a78bfa;
+  --success: #22c55e;
+  --warning: #facc15;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  --shadow: 0 4px 24px rgba(0,0,0,0.35);
+  --sidebar-bg: linear-gradient(180deg, #4c1d95, #2e1065);
+  --sidebar-text: #ede0f7;
+  --sidebar-text-muted: #7a6199;
+  --sidebar-hover: rgba(124,58,237,0.15);
+  --sidebar-active: rgba(124,58,237,0.25);
+}
 html { font-size: 14px; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
 a { color: var(--accent-light); text-decoration: none; }
@@ -87,8 +111,8 @@ table { width: 100%; border-collapse: collapse; }
 .theme-toggle:hover { opacity: 1; }
 .theme-switch { width: 36px; height: 20px; background: rgba(255,255,255,0.2); border-radius: 10px; position: relative; transition: background var(--transition); }
 .theme-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform var(--transition); }
-[data-theme="dark"] .theme-switch { background: var(--accent); }
-[data-theme="dark"] .theme-switch::after { transform: translateX(16px); }
+[data-theme="dark"] .theme-switch, [data-theme="purple"] .theme-switch { background: var(--accent); }
+[data-theme="dark"] .theme-switch::after, [data-theme="purple"] .theme-switch::after { transform: translateX(16px); }
 
 /* MAIN */
 .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; padding: 24px 32px; }
@@ -2818,23 +2842,27 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 function toggleTheme() {
   const html = document.documentElement;
   const current = html.getAttribute('data-theme') || 'light';
-  const next = current === 'dark' ? 'light' : 'dark';
+  const order = ['light', 'dark', 'purple'];
+  const next = order[(order.indexOf(current) + 1) % order.length];
   html.setAttribute('data-theme', next);
   localStorage.setItem('gf_theme', next);
-  document.getElementById('theme-label').textContent = next === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+  const labels = { light: 'Modo Escuro', dark: 'Modo Roxo', purple: 'Modo Claro' };
+  document.getElementById('theme-label').textContent = labels[next] || 'Modo Escuro';
+  updateMobileThemeIcon();
 }
 function loadTheme() {
   const saved = localStorage.getItem('gf_theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
+  const labels = { light: 'Modo Escuro', dark: 'Modo Roxo', purple: 'Modo Claro' };
   const label = document.getElementById('theme-label');
-  if (label) label.textContent = saved === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+  if (label) label.textContent = labels[saved] || 'Modo Escuro';
   updateMobileThemeIcon();
 }
 function updateMobileThemeIcon() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const theme = document.documentElement.getAttribute('data-theme') || 'light';
   const sun = document.getElementById('mob-sun-icon');
   const moon = document.getElementById('mob-moon-icon');
-  if (sun && moon) { sun.style.display = isDark ? 'none' : ''; moon.style.display = isDark ? '' : 'none'; }
+  if (sun && moon) { sun.style.display = theme === 'light' ? '' : 'none'; moon.style.display = theme === 'light' ? 'none' : ''; }
   const label = document.getElementById('theme-label');
   if (label) label.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
 }
