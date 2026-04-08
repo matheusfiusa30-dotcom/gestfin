@@ -2863,8 +2863,9 @@ function updateMobileThemeIcon() {
   const sun = document.getElementById('mob-sun-icon');
   const moon = document.getElementById('mob-moon-icon');
   if (sun && moon) { sun.style.display = theme === 'light' ? '' : 'none'; moon.style.display = theme === 'light' ? 'none' : ''; }
+  const labels = { light: 'Modo Escuro', dark: 'Modo Roxo', purple: 'Modo Claro' };
   const label = document.getElementById('theme-label');
-  if (label) label.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+  if (label) label.textContent = labels[theme] || 'Modo Escuro';
 }
 
 // MOBILE NAVIGATION
