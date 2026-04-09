@@ -1385,6 +1385,7 @@ table td { font-size: 0.85rem; }
     <button class="btn btn-ghost" onclick="editarContrato()">Editar</button>
     <button class="btn btn-ai" onclick="analisarRiscoContrato()">IA Risco</button>
     <button class="btn btn-warning" id="mob-btn-reneg" onclick="openRenegociarModal()">Renegociar</button>
+    <button class="btn btn-danger" onclick="excluirContratoPermanente(currentEmpId)">🗑️ Excluir</button>
   </div>
   <div class="page-header">
     <h2 id="emp-detalhe-titulo">Detalhes do Contrato</h2>
@@ -1393,6 +1394,7 @@ table td { font-size: 0.85rem; }
       <button class="btn btn-ghost btn-sm" onclick="editarContrato()">&#9998; Editar</button>
       <button class="btn btn-ai btn-sm" onclick="analisarRiscoContrato()">IA Analisar Risco</button>
       <button class="btn btn-warning btn-sm" id="btn-renegociar" onclick="openRenegociarModal()">Renegociar</button>
+      <button class="btn btn-danger btn-sm" onclick="excluirContratoPermanente(currentEmpId)">🗑️ Excluir</button>
     </div>
   </div>
   <div class="stats-grid" id="emp-detalhe-stats"></div>
@@ -2281,21 +2283,31 @@ async function resetPassword(email) {
   if (error) throw error;
 }
 
+// Emails com acesso ao plano empresarial (máximo)
+const EMAILS_PLANO_MAX = ['matheusfiusa30@gmail.com'];
+
 async function loadProfile() {
   if (!currentUser) return null;
   try {
     let { data, error } = await supabaseClient.from('perfis').select('*').eq('id', currentUser.id).single();
     if (error && error.code === 'PGRST116') {
       const nome = currentUser.user_metadata?.nome || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || '';
+      const isPlanoMax = EMAILS_PLANO_MAX.includes(currentUser.email?.toLowerCase());
       await supabaseClient.from('perfis').upsert({
         id: currentUser.id,
         nome: nome,
-        plano: 'gratis',
-        max_contratos: 4
+        plano: isPlanoMax ? 'empresarial' : 'gratis',
+        max_contratos: isPlanoMax ? 99999 : 4
       }, { onConflict: 'id' });
       ({ data, error } = await supabaseClient.from('perfis').select('*').eq('id', currentUser.id).single());
       if (error) throw error;
     } else if (error) throw error;
+    // Auto-upgrade para emails autorizados
+    if (data && EMAILS_PLANO_MAX.includes(currentUser.email?.toLowerCase()) && data.plano !== 'empresarial') {
+      await supabaseClient.from('perfis').update({ plano: 'empresarial', max_contratos: 99999 }).eq('id', currentUser.id);
+      data.plano = 'empresarial';
+      data.max_contratos = 99999;
+    }
     currentProfile = data;
     return data;
   } catch(e) {
@@ -3382,18 +3394,27 @@ function previewParcelas() {
   document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
   document.getElementById('emp-preview').style.display='block';
 }
+let _salvandoContratoGF = false;
 async function salvarContrato() {
+  // Bloqueia clique duplo
+  if (_salvandoContratoGF) return;
+  _salvandoContratoGF = true;
+  const _btnSalvarGF = document.querySelector('#modal-contrato .btn-primary, #modal-contrato .btn-success');
+  if (_btnSalvarGF) { _btnSalvarGF.disabled = true; _btnSalvarGF.textContent = '⏳ Salvando...'; }
+
   const tipoContrato=document.getElementById('emp-tipo-contrato').value;
   const editId=document.getElementById('emp-id').value;
 
   // Se é edição, atualizar dados sem recriar parcelas
   if(editId){
-    return salvarEdicaoContrato(editId,tipoContrato);
+    const r = await salvarEdicaoContrato(editId,tipoContrato);
+    _salvandoContratoGF = false; if (_btnSalvarGF) { _btnSalvarGF.disabled = false; _btnSalvarGF.textContent = 'Salvar'; }
+    return r;
   }
 
   // Validar limite do plano
   const planCheck = await checkPlanLimit();
-  if (!planCheck.canCreate) { showUpgradeModal(planCheck.ativos, planCheck.max, planCheck.planoAtual); return; }
+  if (!planCheck.canCreate) { _salvandoContratoGF = false; if (_btnSalvarGF) { _btnSalvarGF.disabled = false; _btnSalvarGF.textContent = 'Salvar'; } showUpgradeModal(planCheck.ativos, planCheck.max, planCheck.planoAtual); return; }
 
   const cl=await dbSelect('clientes');
 
@@ -3405,7 +3426,7 @@ async function salvarContrato() {
 
   // CONTRATO COMUM - NOVO
   const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
-  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');return;}
+  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
   if(cliente && cliente.limiteCredito){
     const es=await dbSelect('emprestimos');
@@ -3423,6 +3444,7 @@ async function salvarContrato() {
   await dbBulkInsert('parcelas',parcRecords);
   // Salvar anexos temporários
   await salvarAnexosTemp(actualEid);
+  _salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}
   closeModal('modal-contrato');toast('Contrato criado!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();updateSidebarPlan();
@@ -3451,7 +3473,7 @@ async function salvarEdicaoContrato(eid,tipoContrato){
 
 async function salvarParcelaUnica(cl) {
   const pid=document.getElementById('pu-pessoa').value,v=parseFloat(document.getElementById('pu-valor').value),t=parseFloat(document.getElementById('pu-taxa').value),dias=parseInt(document.getElementById('pu-dias').value),ini=document.getElementById('pu-inicio').value;
-  if(!pid||!v||!t||!dias||!ini){toast('Preencha todos os campos','error');return;}
+  if(!pid||!v||!t||!dias||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
   const juros=v*(t/100)*(dias/30);const total=v+juros;
   const venc=new Date(ini);venc.setDate(venc.getDate()+dias);const vencStr=venc.toISOString().split('T')[0];
@@ -3461,6 +3483,7 @@ async function salvarParcelaUnica(cl) {
   const actualEid=insertedEmp.id||eid;
   await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:v,valorJuros:juros,valorTotal:total,dataVencimento:vencStr,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
   await salvarAnexosTemp(actualEid);
+  _salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}
   closeModal('modal-contrato');toast('Parcela única criada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();updateSidebarPlan();
@@ -3469,7 +3492,7 @@ async function salvarParcelaUnica(cl) {
 
 async function salvarTrocaCheques(cl) {
   const pid=document.getElementById('tc-pessoa').value,vCheque=parseFloat(document.getElementById('tc-valor-cheque').value),t=parseFloat(document.getElementById('tc-taxa').value),bomPara=document.getElementById('tc-bom-para').value,ini=document.getElementById('tc-inicio').value;
-  if(!pid||!vCheque||!t||!bomPara||!ini){toast('Preencha todos os campos','error');return;}
+  if(!pid||!vCheque||!t||!bomPara||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
   const desconto=vCheque*(t/100);const entregue=vCheque-desconto;
   // Criar contrato (valor = entregue ao cliente, lucro = desconto)
@@ -3483,9 +3506,45 @@ async function salvarTrocaCheques(cl) {
   const numCheque=document.getElementById('tc-num-cheque').value.trim()||'S/N';
   await dbInsert('cheques',{id:genId(),clienteId:pid,contratoId:actualEid,numero:numCheque,banco:document.getElementById('tc-banco').value.trim(),agencia:document.getElementById('tc-agencia').value.trim(),valor:vCheque,emissao:ini,bomPara:bomPara,status:'pendente',obs:`Troca de cheque`,criadoEm:today()});
   await salvarAnexosTemp(actualEid);
+  _salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}
   closeModal('modal-contrato');toast('Troca de cheque registrada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');invalidateCache('cheques');
   await renderContratos();updateSidebarPlan();
+}
+
+// EXCLUIR CONTRATO PERMANENTEMENTE
+async function excluirContratoPermanente(eid) {
+  if (!confirm('⚠️ Tem certeza que deseja EXCLUIR este contrato e todas as suas parcelas? Esta ação não pode ser desfeita.')) return;
+  try {
+    // Excluir parcelas vinculadas
+    const parcelas = await dbSelect('parcelas');
+    const parcelasDoContrato = parcelas.filter(p => p.emprestimoId === eid);
+    for (const p of parcelasDoContrato) {
+      await dbDelete('parcelas', p.id);
+    }
+    // Excluir anexos vinculados
+    try {
+      const anexos = await dbSelect('anexos');
+      const anexosDoContrato = (anexos||[]).filter(a => a.emprestimoId === eid);
+      for (const a of anexosDoContrato) { await dbDelete('anexos', a.id); }
+    } catch(e) { console.warn('Erro ao excluir anexos:', e); }
+    // Excluir cheques vinculados
+    try {
+      const cheques = await dbSelect('cheques');
+      const chequesDoContrato = (cheques||[]).filter(c => c.contratoId === eid);
+      for (const c of chequesDoContrato) { await dbDelete('cheques', c.id); }
+    } catch(e) { console.warn('Erro ao excluir cheques:', e); }
+    // Excluir o contrato
+    await dbDelete('emprestimos', eid);
+    invalidateCache('emprestimos'); invalidateCache('parcelas'); invalidateCache('cheques'); invalidateCache('anexos');
+    toast('Contrato excluído com sucesso!');
+    // Se estiver na página de detalhe, voltar para lista
+    if (currentEmpId === eid) { navigateTo('contratos'); }
+    await renderContratos(); updateSidebarPlan();
+  } catch(e) {
+    console.error('Erro ao excluir contrato:', e);
+    toast('Erro ao excluir contrato: ' + e.message, 'error');
+  }
 }
 
 function showContratoWhatsApp(cliente, contratoId, valor, valorTotal, valorParcela, numParcelas, primVenc, freqLabel) {
@@ -3582,7 +3641,7 @@ async function renderContratos() {
   tb.innerHTML=fil.map(e=>{const p=cl.find(x=>x.id===e.pessoaId),ps=ap.filter(x=>x.emprestimoId===e.id),pg=ps.filter(x=>x.status==='paga').length,pct=ps.length?Math.round(pg/ps.length*100):0;
     const stm={ativo:'badge-accent',quitado:'badge-success',atrasado:'badge-danger',renegociado:'badge-warning'};const fc=pct>=100?'green':pct>=50?'yellow':'red';
     const risco=calcRiscoLocalSync(e.id,ap);
-    return `<tr style="cursor:pointer;" onclick="verContrato('${e.id}')"><td>${p?esc(p.nome):'?'}</td><td>${moeda(e.valor)}</td><td>${fmtPct(e.taxaJuros)}/mês</td><td>${pg}/${e.numParcelas}</td><td>${fmtData(e.dataInicio)}</td><td><span class="badge ${stm[e.status]||'badge-info'}">${e.status}</span></td><td style="min-width:80px;"><div class="progress-bar"><div class="fill ${fc}" style="width:${pct}%"></div></div></td><td>${risco}</td><td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();verContrato('${e.id}')">Ver</button></td></tr>`;}).join('');
+    return `<tr style="cursor:pointer;" onclick="verContrato('${e.id}')"><td>${p?esc(p.nome):'?'}</td><td>${moeda(e.valor)}</td><td>${fmtPct(e.taxaJuros)}/mês</td><td>${pg}/${e.numParcelas}</td><td>${fmtData(e.dataInicio)}</td><td><span class="badge ${stm[e.status]||'badge-info'}">${e.status}</span></td><td style="min-width:80px;"><div class="progress-bar"><div class="fill ${fc}" style="width:${pct}%"></div></div></td><td>${risco}</td><td style="display:flex;gap:4px;"><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();verContrato('${e.id}')">Ver</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();excluirContratoPermanente('${e.id}')" title="Excluir contrato">🗑️</button></td></tr>`;}).join('');
 }
 
 // RISCO LOCAL (scoring rápido)
