@@ -823,6 +823,48 @@ table td { font-size: 0.85rem; }
 .modal-anexo-view .modal { background: transparent; border: none; max-width: 95vw; max-height: 95vh; display: flex; align-items: center; justify-content: center; box-shadow: none; }
 .modal-anexo-view img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--radius); }
 .modal-anexo-view .anexo-close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 210; }
+
+/* NOTIFICATION BELL - Desktop (fixed top-right) */
+.notif-bell-desktop { position: fixed; top: 20px; right: 20px; z-index: 150; width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: transform var(--transition); }
+.notif-bell-desktop:hover { transform: scale(1.05); }
+.notif-bell-desktop svg { width: 20px; height: 20px; }
+.notif-bell-desktop .notif-badge { position: absolute; top: -2px; right: -2px; background: var(--danger); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 10px; padding: 0 5px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); }
+
+/* NOTIFICATION BELL - Mobile (subtle, inside mobile-top-actions) */
+.notif-bell-mobile { position: relative; width: 32px; height: 32px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.2s ease; padding: 0; }
+.notif-bell-mobile:active { transform: scale(0.85); }
+.notif-bell-mobile svg { width: 16px; height: 16px; }
+.notif-bell-mobile .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--danger); color: #fff; font-size: 0.55rem; font-weight: 700; min-width: 14px; height: 14px; border-radius: 8px; padding: 0 3px; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.2); }
+
+/* NOTIFICATION DROPDOWN */
+.notif-dropdown { position: fixed; top: 70px; right: 20px; width: 340px; max-height: 70vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 210; display: none; }
+.notif-dropdown.active { display: block; }
+.notif-dropdown .notif-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.notif-dropdown .notif-header h4 { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+.notif-dropdown .notif-clear { background: none; border: none; color: var(--text-muted); font-size: 0.72rem; cursor: pointer; }
+.notif-dropdown .notif-clear:hover { color: var(--accent); }
+.notif-dropdown .notif-list { padding: 6px 0; }
+.notif-dropdown .notif-empty { text-align: center; color: var(--text-muted); padding: 30px 16px; font-size: 0.85rem; }
+.notif-dropdown .notif-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background var(--transition); display: flex; gap: 10px; align-items: flex-start; }
+.notif-dropdown .notif-item:hover { background: var(--bg-hover); }
+.notif-dropdown .notif-item:last-child { border-bottom: none; }
+.notif-dropdown .notif-icon { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 700; }
+.notif-dropdown .notif-icon.urgent { background: rgba(211,47,47,0.15); color: var(--danger); }
+.notif-dropdown .notif-icon.today { background: rgba(249,168,37,0.15); color: var(--warning); }
+.notif-dropdown .notif-icon.upcoming { background: rgba(25,118,210,0.15); color: var(--info); }
+.notif-dropdown .notif-body { flex: 1; min-width: 0; }
+.notif-dropdown .notif-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-dropdown .notif-subtitle { font-size: 0.72rem; color: var(--text-secondary); }
+.notif-dropdown .notif-value { font-size: 0.78rem; font-weight: 700; color: var(--accent); margin-top: 2px; }
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+  .notif-bell-desktop { display: none !important; }
+  .notif-dropdown { top: 60px; left: 12px; right: 12px; width: auto; max-width: none; }
+}
+@media (min-width: 769px) {
+  .notif-bell-mobile { display: none !important; }
+}
 </style>
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 </head>
@@ -1740,6 +1782,10 @@ table td { font-size: 0.85rem; }
           <svg id="mob-sun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           <svg id="mob-moon-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
+        <button class="notif-bell-mobile" onclick="toggleNotifDropdown()" id="notif-bell-mob" type="button">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-badge" id="notif-badge-mob" style="display:none;">0</span>
+        </button>
         <div class="mobile-avatar" id="mob-avatar" onclick="toggleMobileProfile()">?</div>
         <div class="mobile-profile-dropdown" id="mob-profile-dropdown">
           <div class="prof-header">
@@ -2149,6 +2195,21 @@ table td { font-size: 0.85rem; }
   <div class="modal"><img id="anexo-view-img" src="" alt="Anexo"></div>
 </div>
 
+<!-- NOTIFICATION BELL DESKTOP + DROPDOWN -->
+<button class="notif-bell-desktop" onclick="toggleNotifDropdown()" id="notif-bell-desk" type="button" style="display:none;">
+  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+  <span class="notif-badge" id="notif-badge-desk" style="display:none;">0</span>
+</button>
+<div class="notif-dropdown" id="notif-dropdown">
+  <div class="notif-header">
+    <h4>Notificações</h4>
+    <button class="notif-clear" onclick="marcarTodasLidas()">Marcar lidas</button>
+  </div>
+  <div class="notif-list" id="notif-list">
+    <div class="notif-empty">Nenhuma notificação</div>
+  </div>
+</div>
+
 </div><!-- /app-container -->
 
 <div class="confirm-overlay" id="confirm-dialog">
@@ -2419,7 +2480,134 @@ document.addEventListener('click',function(e){
   if(dd&&dd.classList.contains('active')&&!dd.contains(e.target)&&e.target!==av&&!av.contains(e.target)){
     dd.classList.remove('active');
   }
+  // Notif dropdown
+  const nd=document.getElementById('notif-dropdown');
+  const bd=document.getElementById('notif-bell-desk');
+  const bm=document.getElementById('notif-bell-mob');
+  if(nd&&nd.classList.contains('active')&&!nd.contains(e.target)&&!(bd&&bd.contains(e.target))&&!(bm&&bm.contains(e.target))){
+    nd.classList.remove('active');
+  }
 });
+
+// ================================================
+// NOTIFICAÇÕES
+// ================================================
+async function requestNotifPermission(){
+  if(!('Notification' in window))return false;
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='denied')return false;
+  try{const p=await Notification.requestPermission();return p==='granted';}catch(e){return false;}
+}
+
+async function checkNotifications(){
+  if(!currentUser)return;
+  try{
+    const [ps,es,cl]=await Promise.all([dbSelect('parcelas'),dbSelect('emprestimos'),dbSelect('clientes')]);
+    const h=today();
+    const hDate=new Date(h+'T00:00:00');
+    const esMap=new Map(es.map(e=>[e.id,e]));
+    const clMap=new Map(cl.map(c=>[c.id,c]));
+    const pend=ps.filter(p=>p.status==='pendente').map(p=>{
+      const e=esMap.get(p.emprestimoId);
+      const c=e?clMap.get(e.pessoaId):null;
+      const pDate=new Date(p.dataVencimento+'T00:00:00');
+      const daysDiff=Math.floor((pDate-hDate)/864e5);
+      let urgencia;
+      if(daysDiff<0)urgencia='urgent';
+      else if(daysDiff===0)urgencia='today';
+      else if(daysDiff<=7)urgencia='upcoming';
+      else return null;
+      return {parcela:p,emp:e,cliente:c,daysDiff,urgencia};
+    }).filter(Boolean);
+    pend.sort((a,b)=>a.daysDiff-b.daysDiff);
+    renderNotifList(pend);
+    updateNotifBadge(pend);
+    // Notificacao nativa pra mais urgente (max 1 por 6h)
+    if(pend.length && await requestNotifPermission()){
+      const p=pend[0];
+      const lastKey=`gf_notif_${p.parcela.id}`;
+      const last=parseInt(localStorage.getItem(lastKey)||'0',10);
+      const now=Date.now();
+      if(now-last>=6*60*60*1000){
+        showNativeNotif(p);
+        localStorage.setItem(lastKey,String(now));
+      }
+    }
+  }catch(e){console.error('checkNotifications error:',e);}
+}
+
+function showNativeNotif(p){
+  const nome=p.cliente?p.cliente.nome:'Cliente';
+  let titulo,body;
+  if(p.urgencia==='urgent'){
+    titulo=`⚠ Parcela vencida - ${nome}`;
+    body=`${Math.abs(p.daysDiff)} dia(s) em atraso • ${moeda(p.parcela.valorTotal)}`;
+  } else if(p.urgencia==='today'){
+    titulo=`📅 Vence hoje - ${nome}`;
+    body=`Parcela #${p.parcela.numero} • ${moeda(p.parcela.valorTotal)}`;
+  } else {
+    titulo=`🔔 Vencimento próximo - ${nome}`;
+    body=`Em ${p.daysDiff} dia(s) • ${moeda(p.parcela.valorTotal)}`;
+  }
+  try{
+    const n=new Notification('GestFin: '+titulo,{body,tag:'gf-'+p.parcela.id});
+    n.onclick=()=>{window.focus();clickNotif(p.parcela.id,p.emp?p.emp.id:'');n.close();};
+  }catch(e){console.warn('Notification error:',e);}
+}
+
+function renderNotifList(pend){
+  const list=document.getElementById('notif-list');
+  if(!list)return;
+  if(!pend.length){list.innerHTML='<div class="notif-empty">Nenhuma notificação</div>';return;}
+  const iconMap={urgent:'⚠',today:'!',upcoming:'•'};
+  list.innerHTML=pend.slice(0,20).map(p=>{
+    const nome=p.cliente?p.cliente.nome:'Cliente';
+    let subtitle;
+    if(p.urgencia==='urgent')subtitle=`${Math.abs(p.daysDiff)}d em atraso • #${p.parcela.numero}`;
+    else if(p.urgencia==='today')subtitle=`Vence hoje • #${p.parcela.numero}`;
+    else subtitle=`Em ${p.daysDiff}d • #${p.parcela.numero}`;
+    return `<div class="notif-item" onclick="clickNotif('${p.parcela.id}','${p.emp?p.emp.id:''}')">
+      <div class="notif-icon ${p.urgencia}">${iconMap[p.urgencia]}</div>
+      <div class="notif-body">
+        <div class="notif-title">${esc(nome)}</div>
+        <div class="notif-subtitle">${subtitle}</div>
+        <div class="notif-value">${moeda(p.parcela.valorTotal)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateNotifBadge(pend){
+  const urgentCount=pend.filter(p=>p.urgencia==='urgent'||p.urgencia==='today').length;
+  ['notif-badge-mob','notif-badge-desk'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=urgentCount>9?'9+':urgentCount;el.style.display=urgentCount>0?'flex':'none';}
+  });
+}
+
+function toggleNotifDropdown(){
+  const dd=document.getElementById('notif-dropdown');
+  if(!dd)return;
+  dd.classList.toggle('active');
+  if(dd.classList.contains('active'))requestNotifPermission();
+}
+
+function clickNotif(parcelaId,empId){
+  document.getElementById('notif-dropdown').classList.remove('active');
+  if(isMobile())mobileNav('receber-parcela');
+  else navigateTo('receber-parcela');
+  setTimeout(()=>{if(empId&&parcelaId)abrirPagamento(parcelaId,empId);},250);
+}
+
+function marcarTodasLidas(){
+  const ps=DB_CACHE.parcelas||[];
+  const now=String(Date.now());
+  ps.forEach(p=>localStorage.setItem(`gf_notif_${p.id}`,now));
+  document.getElementById('notif-dropdown').classList.remove('active');
+  // Zerar badge temporariamente
+  ['notif-badge-mob','notif-badge-desk'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  toast('Notificações marcadas como lidas');
+}
 
 async function updateSidebarPlan() {
   if (!currentProfile) return;
@@ -2604,6 +2792,8 @@ async function handleLogout() {
     currentProfile = null;
     appBooted = false;
     invalidateAllCache();
+    if(window._notifInterval){clearInterval(window._notifInterval);window._notifInterval=null;}
+    const bellDesk=document.getElementById('notif-bell-desk');if(bellDesk)bellDesk.style.display='none';
     showLanding();
     toast('Você saiu da conta.');
   } catch(e) {
@@ -2612,6 +2802,7 @@ async function handleLogout() {
     currentUser = null;
     currentProfile = null;
     appBooted = false;
+    if(window._notifInterval){clearInterval(window._notifInterval);window._notifInterval=null;}
     showLanding();
   }
 }
@@ -4650,6 +4841,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderDashboard();
       }
     } catch(e) { console.error('Render error:', e); }
+    // Sino de notificações
+    const bellDesk=document.getElementById('notif-bell-desk');
+    if(bellDesk)bellDesk.style.display='flex';
+    checkNotifications();
+    if(!window._notifInterval)window._notifInterval=setInterval(checkNotifications,6*60*60*1000);
     // Preload remaining tables in background (cheques, despesas, cobradores)
     Promise.all([
       dbSelect('cheques'),
