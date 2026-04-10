@@ -1991,18 +1991,51 @@ table td { font-size: 0.85rem; }
     <div class="modal-header"><h3>Registrar Pagamento</h3><button class="btn-icon" onclick="closeModal('modal-pagamento')">&times;</button></div>
     <div class="modal-body">
       <input type="hidden" id="pag-parcela-id"><input type="hidden" id="pag-emprestimo-id">
-      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:0.85rem;">
-        <div style="display:flex;justify-content:space-between;"><span>Parcela: <strong id="pag-info-parcela"></strong></span><span>Valor: <strong id="pag-info-valor"></strong></span></div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Vencimento: <strong id="pag-info-venc"></strong></span><span>Mora: <strong id="pag-info-mora"></strong></span></div>
+
+      <!-- Detalhamento da parcela -->
+      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:0.85rem;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);"><span><strong id="pag-info-parcela"></strong></span><span>Venc: <strong id="pag-info-venc"></strong></span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Principal:</span><strong id="pag-info-principal"></strong></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Juros:</span><strong id="pag-info-juros" style="color:var(--warning);"></strong></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Mora:</span><strong id="pag-info-mora" style="color:var(--danger);"></strong></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"><span><strong>Total a receber:</strong></span><strong id="pag-info-total" style="color:var(--success);font-size:0.95rem;"></strong></div>
       </div>
+
+      <!-- Botões de ação rápida -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        <button type="button" class="btn btn-sm btn-ghost" onclick="pagReceberTotal()">Total</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="pagReceberSoJuros()">Só Juros</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="pagAplicarDesconto()" id="pag-btn-desconto">Aplicar Desconto</button>
+      </div>
+
       <div class="form-row">
         <div class="form-group"><label>Valor Pagamento *</label><input class="form-control" type="number" id="pag-valor" step="0.01"></div>
         <div class="form-group"><label>Data Pagamento *</label><input class="form-control" type="date" id="pag-data"></div>
       </div>
-      <div class="form-group"><label>Tipo</label><select class="form-control" id="pag-tipo"><option value="total">Total</option><option value="parcial">Parcial</option><option value="antecipado">Antecipado</option></select></div>
+      <div class="form-group"><label>Tipo</label><select class="form-control" id="pag-tipo"><option value="total">Total</option><option value="parcial">Parcial</option><option value="juros">Só Juros</option><option value="antecipado">Antecipado</option></select></div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="pag-obs"></textarea></div>
+      <div style="background:rgba(46,125,50,0.1);border:1px solid var(--success);border-radius:var(--radius-sm);padding:8px 12px;font-size:0.75rem;color:var(--success);display:none;" id="pag-desconto-alert">
+        ✓ Desconto aplicado — a parcela será quitada com o valor informado
+      </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-pagamento')">Cancelar</button><button class="btn btn-ghost" onclick="gerarRecibo()">Recibo</button><button class="btn btn-success" onclick="salvarPagamento()">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Modal Adiar Parcela -->
+<div class="modal-overlay" id="modal-adiar">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header"><h3>Adiar Parcela</h3><button class="btn-icon" onclick="closeModal('modal-adiar')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="adiar-parcela-id">
+      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:0.85rem;">
+        <div>Parcela: <strong id="adiar-info-parcela"></strong></div>
+        <div style="margin-top:4px;">Vencimento atual: <strong id="adiar-info-venc"></strong></div>
+      </div>
+      <div class="form-group"><label>Nova data de vencimento *</label><input class="form-control" type="date" id="adiar-nova-data"></div>
+      <div class="form-group"><label>Motivo (opcional)</label><textarea class="form-control" id="adiar-motivo" placeholder="Ex: Cliente pediu adiamento"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-adiar')">Cancelar</button><button class="btn btn-primary" onclick="confirmarAdiamento()">Adiar</button></div>
   </div>
 </div>
 
@@ -3687,14 +3720,111 @@ async function verContrato(eid) {
 // ================================================
 // PAGAMENTOS
 // ================================================
+let _pagDescontoAtivo=false;
 async function abrirPagamento(pid,eid) {
   const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);if(!p)return;
   const h=today(),cfg=await getConfig(),at=p.status==='pendente'&&p.dataVencimento<h,mr=at?calcMoraSync(p.dataVencimento,null,p.valorTotal,cfg):0;
+  window._pagParcela=p;window._pagMora=mr;_pagDescontoAtivo=false;
   document.getElementById('pag-parcela-id').value=pid;document.getElementById('pag-emprestimo-id').value=eid;
-  document.getElementById('pag-info-parcela').textContent='#'+p.numero;document.getElementById('pag-info-valor').textContent=moeda(p.valorTotal);
-  document.getElementById('pag-info-venc').textContent=fmtData(p.dataVencimento);document.getElementById('pag-info-mora').textContent=mr>0?moeda(mr):'Sem mora';
-  document.getElementById('pag-valor').value=(p.valorTotal+mr-(p.valorPago||0)).toFixed(2);document.getElementById('pag-data').value=h;
-  document.getElementById('pag-tipo').value='total';document.getElementById('pag-obs').value='';openModal('modal-pagamento');
+  document.getElementById('pag-info-parcela').textContent='Parcela #'+p.numero;
+  document.getElementById('pag-info-venc').textContent=fmtData(p.dataVencimento);
+  document.getElementById('pag-info-principal').textContent=moeda(p.valorPrincipal||0);
+  document.getElementById('pag-info-juros').textContent=moeda(p.valorJuros||0);
+  document.getElementById('pag-info-mora').textContent=mr>0?moeda(mr):'-';
+  document.getElementById('pag-info-total').textContent=moeda(p.valorTotal+mr-(p.valorPago||0));
+  document.getElementById('pag-valor').value=(p.valorTotal+mr-(p.valorPago||0)).toFixed(2);
+  document.getElementById('pag-data').value=h;
+  document.getElementById('pag-tipo').value='total';document.getElementById('pag-obs').value='';
+  document.getElementById('pag-desconto-alert').style.display='none';
+  document.getElementById('pag-btn-desconto').classList.remove('btn-success');
+  document.getElementById('pag-btn-desconto').classList.add('btn-ghost');
+  document.getElementById('pag-btn-desconto').textContent='Aplicar Desconto';
+  openModal('modal-pagamento');
+}
+
+function pagReceberTotal(){
+  const p=window._pagParcela,mr=window._pagMora||0;
+  if(!p)return;
+  document.getElementById('pag-valor').value=(p.valorTotal+mr-(p.valorPago||0)).toFixed(2);
+  document.getElementById('pag-tipo').value='total';
+}
+
+function pagReceberSoJuros(){
+  const p=window._pagParcela,mr=window._pagMora||0;
+  if(!p)return;
+  const valJuros=(p.valorJuros||0)+mr;
+  document.getElementById('pag-valor').value=valJuros.toFixed(2);
+  document.getElementById('pag-tipo').value='juros';
+  document.getElementById('pag-obs').value='Recebimento apenas dos juros';
+}
+
+function pagAplicarDesconto(){
+  _pagDescontoAtivo=!_pagDescontoAtivo;
+  const btn=document.getElementById('pag-btn-desconto');
+  const alert=document.getElementById('pag-desconto-alert');
+  if(_pagDescontoAtivo){
+    btn.classList.remove('btn-ghost');btn.classList.add('btn-success');
+    btn.textContent='✓ Desconto Ativo';
+    alert.style.display='block';
+  } else {
+    btn.classList.remove('btn-success');btn.classList.add('btn-ghost');
+    btn.textContent='Aplicar Desconto';
+    alert.style.display='none';
+  }
+}
+
+function abrirAdiarParcela(pid){
+  const p=window._pagParcela;
+  if(!p){
+    // Se chamado de fora do modal, buscar a parcela
+    dbSelect('parcelas').then(ps=>{
+      const parc=ps.find(x=>x.id===pid);
+      if(parc){
+        window._pagParcela=parc;
+        document.getElementById('adiar-parcela-id').value=pid;
+        document.getElementById('adiar-info-parcela').textContent='#'+parc.numero;
+        document.getElementById('adiar-info-venc').textContent=fmtData(parc.dataVencimento);
+        document.getElementById('adiar-nova-data').value=parc.dataVencimento;
+        document.getElementById('adiar-motivo').value='';
+        openModal('modal-adiar');
+      }
+    });
+    return;
+  }
+  document.getElementById('adiar-parcela-id').value=pid;
+  document.getElementById('adiar-info-parcela').textContent='#'+p.numero;
+  document.getElementById('adiar-info-venc').textContent=fmtData(p.dataVencimento);
+  document.getElementById('adiar-nova-data').value=p.dataVencimento;
+  document.getElementById('adiar-motivo').value='';
+  openModal('modal-adiar');
+}
+
+async function confirmarAdiamento(){
+  const pid=document.getElementById('adiar-parcela-id').value;
+  const novaData=document.getElementById('adiar-nova-data').value;
+  const motivo=document.getElementById('adiar-motivo').value.trim();
+  if(!novaData){toast('Informe a nova data','error');return;}
+  const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);
+  if(!p)return;
+  const obsAntigo=p.obs||'';
+  const novoObs=`${obsAntigo?obsAntigo+' | ':''}[Adiado de ${fmtData(p.dataVencimento)} para ${fmtData(novaData)}${motivo?' - '+motivo:''}]`;
+  await dbUpdate('parcelas',pid,{dataVencimento:novaData,obs:novoObs});
+  invalidateCache('parcelas');
+  closeModal('modal-adiar');
+  toast('Parcela adiada!');
+  if(document.getElementById('page-receber-parcela').classList.contains('active'))renderReceberParcela();
+  if(document.getElementById('page-contrato-detalhe').classList.contains('active')&&currentEmpId)verContrato(currentEmpId);
+}
+
+function tracarRota(clienteId){
+  dbSelect('clientes').then(cl=>{
+    const c=cl.find(x=>x.id===clienteId);
+    if(!c||!c.endereco){toast('Cliente sem endereço cadastrado','warning');return;}
+    const endereco=encodeURIComponent(c.endereco);
+    // Universal maps URL — funciona em iOS (Apple Maps), Android (Google Maps) e desktop
+    const url=`https://www.google.com/maps/dir/?api=1&destination=${endereco}`;
+    window.open(url,'_blank');
+  });
 }
 async function salvarPagamento() {
   const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=parseFloat(document.getElementById('pag-valor').value),d=document.getElementById('pag-data').value,t=document.getElementById('pag-tipo').value;
@@ -3703,9 +3833,23 @@ async function salvarPagamento() {
   const cfg=await getConfig();
   const mr=p.dataVencimento<d?calcMoraSync(p.dataVencimento,d,p.valorTotal,cfg):0;
   const newValorPago=(p.valorPago||0)+v;
-  const newStatus=(t==='total'||newValorPago>=p.valorTotal)?'paga':p.status;
+  let obs=document.getElementById('pag-obs').value.trim();
+
+  // Definir status com base nas opções selecionadas
+  let newStatus=p.status;
+  if(_pagDescontoAtivo){
+    newStatus='paga';
+    const diff=p.valorTotal+mr-v;
+    obs=`${obs?obs+' | ':''}[Desconto aplicado: ${moeda(diff)}]`;
+  } else if(t==='juros'){
+    // Pagamento só dos juros — parcela continua pendente
+    newStatus=p.status;
+  } else if(t==='total'||newValorPago>=p.valorTotal){
+    newStatus='paga';
+  }
+
   await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
-  const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:document.getElementById('pag-obs').value.trim()};
+  const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:obs};
   await dbInsert('pagamentos',pagRecord);
   invalidateCache('parcelas');invalidateCache('pagamentos');
   closeModal('modal-pagamento');toast('Pagamento registrado!');
@@ -3812,9 +3956,11 @@ async function renderReceberParcela() {
   document.getElementById('badge-parcelas').textContent=ps.filter(x=>x.dataVencimento<h).length;
   document.getElementById('recpar-table').innerHTML=fil.length?fil.map(x=>{const e=es.find(ee=>ee.id===x.emprestimoId),c=e?cl.find(cc=>cc.id===e.pessoaId):null,mr=x.dataVencimento<h?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):0;
     const diasAtraso=x.dataVencimento<h?Math.floor((new Date()-new Date(x.dataVencimento))/864e5):0;
-    const cobrarBtn=diasAtraso>0?`<button class="btn btn-sm" style="background:#25D366;color:#fff;margin-left:4px;" onclick="event.stopPropagation();cobrarWhatsApp('${c?c.id:''}','${x.id}','${x.emprestimoId}',${diasAtraso})">Cobrar</button>`:'';
-    const lembreteBtn=diasAtraso<=0?`<button class="btn btn-sm" style="background:#25D366;color:#fff;margin-left:4px;" onclick="event.stopPropagation();lembreteWhatsApp('${c?c.id:''}','${x.id}')">Lembrar</button>`:'';
-    return `<tr><td>${c?esc(c.nome):'-'}</td><td>${moeda(e?e.valor:0)}</td><td>#${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${moeda(x.valorTotal+mr-(x.valorPago||0))}</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${x.emprestimoId}')">Receber</button>${cobrarBtn}${lembreteBtn}</td></tr>`;}).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma parcela</td></tr>';
+    const cobrarBtn=diasAtraso>0?`<button class="btn btn-sm" style="background:#25D366;color:#fff;margin-left:4px;" onclick="event.stopPropagation();cobrarWhatsApp('${c?c.id:''}','${x.id}','${x.emprestimoId}',${diasAtraso})" title="Cobrar no WhatsApp">💬</button>`:'';
+    const lembreteBtn=diasAtraso<=0?`<button class="btn btn-sm" style="background:#25D366;color:#fff;margin-left:4px;" onclick="event.stopPropagation();lembreteWhatsApp('${c?c.id:''}','${x.id}')" title="Lembrete WhatsApp">💬</button>`:'';
+    const rotaBtn=c&&c.endereco?`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();tracarRota('${c.id}')" title="Traçar rota" style="margin-left:4px;">📍</button>`:'';
+    const adiarBtn=`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();abrirAdiarParcela('${x.id}')" title="Adiar parcela" style="margin-left:4px;">📅</button>`;
+    return `<tr><td>${c?esc(c.nome):'-'}</td><td>${moeda(e?e.valor:0)}</td><td>#${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${moeda(x.valorTotal+mr-(x.valorPago||0))}</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${x.emprestimoId}')">Receber</button>${rotaBtn}${adiarBtn}${cobrarBtn}${lembreteBtn}</td></tr>`;}).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma parcela</td></tr>';
 }
 
 // RECEBER CHEQUE
