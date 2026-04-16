@@ -860,6 +860,16 @@ table td { font-size: 0.85rem; }
   html, body { overscroll-behavior-y: contain; }
 }
 
+/* SKELETON LOADERS — shimmer placeholder while data loads */
+@keyframes gf-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skel { display: inline-block; background: linear-gradient(90deg, var(--border) 0%, var(--bg-hover) 50%, var(--border) 100%); background-size: 200% 100%; animation: gf-shimmer 1.4s ease-in-out infinite; border-radius: 6px; color: transparent !important; }
+.skel-line { display: block; height: 12px; margin: 6px 0; }
+.skel-stat { height: 24px; width: 70%; margin: 4px 0 0; }
+.skel-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.skel-row:last-child { border-bottom: none; }
+.skel-row .skel-line { flex: 1; margin-right: 12px; max-width: 60%; }
+.skel-row .skel-val { width: 70px; height: 14px; }
+
 </style>
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 </head>
@@ -3365,56 +3375,79 @@ function initHistoryNav(){
 }
 
 async function renderMobileHome() {
-  // Greeting
+  // Greeting — renderiza imediato
   const h = new Date().getHours();
   const greet = h < 12 ? 'Bom dia!' : h < 18 ? 'Boa tarde!' : 'Boa noite!';
   document.getElementById('mobile-greeting').textContent = greet;
 
-  // Balances
-  const es = await dbSelect('emprestimos');
-  const ps = await dbSelect('parcelas');
-  const pgs = await dbSelect('pagamentos');
-  const cl = await dbSelect('clientes');
+  // SKELETON imediato — usuário vê estrutura antes dos dados
+  const skelValor = '<span class="skel skel-stat" style="width:80px;">.</span>';
+  const skelEmp = document.getElementById('mob-emprestado');
+  const skelRec = document.getElementById('mob-receber');
+  const skelRecd = document.getElementById('mob-recebido');
+  if(skelEmp && !skelEmp.dataset.loaded) skelEmp.innerHTML = skelValor;
+  if(skelRec && !skelRec.dataset.loaded) skelRec.innerHTML = skelValor;
+  if(skelRecd && !skelRecd.dataset.loaded) skelRecd.innerHTML = skelValor;
+  const skelList = '<div class="skel-row"><span class="skel skel-line">.</span><span class="skel skel-val">.</span></div>'.repeat(3);
+  const proxEl = document.getElementById('mobile-proximos');
+  const ativEl = document.getElementById('mobile-atividade');
+  if(proxEl && !proxEl.dataset.loaded) proxEl.innerHTML = skelList;
+  if(ativEl && !ativEl.dataset.loaded) ativEl.innerHTML = skelList;
+
+  // Fetch em paralelo — dbSelect já deduplica se outra chamada estiver em voo
+  const [es, ps, pgs, cl] = await Promise.all([
+    dbSelect('emprestimos'),
+    dbSelect('parcelas'),
+    dbSelect('pagamentos'),
+    dbSelect('clientes')
+  ]);
   const hoje = today();
 
+  // Balances
   const totalEmp = es.reduce((s,e) => s + Number(e.valor||0), 0);
   const totalReceber = ps.filter(p => p.status === 'pendente').reduce((s,p) => s + Number(p.valorTotal||0), 0);
   const totalRecebido = pgs.reduce((s,p) => s + Number(p.valor||0), 0);
+  if(skelEmp){ skelEmp.textContent = moeda(totalEmp); skelEmp.dataset.loaded = '1'; }
+  if(skelRec){ skelRec.textContent = moeda(totalReceber); skelRec.dataset.loaded = '1'; }
+  if(skelRecd){ skelRecd.textContent = moeda(totalRecebido); skelRecd.dataset.loaded = '1'; }
 
-  document.getElementById('mob-emprestado').textContent = moeda(totalEmp);
-  document.getElementById('mob-receber').textContent = moeda(totalReceber);
-  document.getElementById('mob-recebido').textContent = moeda(totalRecebido);
-
-  // Badge
-  const atrasadas = ps.filter(p => p.status === 'pendente' && p.dataVencimento < hoje).length;
+  // Indexar clientes/emprestimos pra lookups O(1)
+  const esMap = new Map(es.map(e => [e.id, e]));
+  const clMap = new Map(cl.map(c => [c.id, c]));
 
   // Próximos vencimentos
   const prox = ps.filter(p => p.status === 'pendente' && p.dataVencimento >= hoje)
     .sort((a,b) => a.dataVencimento.localeCompare(b.dataVencimento)).slice(0, 5);
-  document.getElementById('mobile-proximos').innerHTML = prox.length ?
-    prox.map(p => {
-      const e = es.find(x => x.id === p.emprestimoId);
-      const c = e ? cl.find(x => x.id === e.pessoaId) : null;
-      return `<div class="mobile-quick-item" onclick="mobileNav('receber-parcela')">
-        <div class="mq-left"><div class="mq-dot" style="background:var(--info);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">Parcela #${p.numero} - ${fmtData(p.dataVencimento)}</div></div></div>
-        <div class="mq-value">${moeda(p.valorTotal)}</div>
-      </div>`;
-    }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhum vencimento</div>';
+  if(proxEl){
+    proxEl.dataset.loaded = '1';
+    proxEl.innerHTML = prox.length ?
+      prox.map(p => {
+        const e = esMap.get(p.emprestimoId);
+        const c = e ? clMap.get(e.pessoaId) : null;
+        return `<div class="mobile-quick-item" onclick="mobileNav('receber-parcela')">
+          <div class="mq-left"><div class="mq-dot" style="background:var(--info);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">Parcela #${p.numero} - ${fmtData(p.dataVencimento)}</div></div></div>
+          <div class="mq-value">${moeda(p.valorTotal)}</div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhum vencimento</div>';
+  }
 
   // Atividade recente
-  const recentes = pgs.sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
-  document.getElementById('mobile-atividade').innerHTML = recentes.length ?
-    recentes.map(pg => {
-      const e = es.find(x => x.id === pg.emprestimoId);
-      const c = e ? cl.find(x => x.id === e.pessoaId) : null;
-      return `<div class="mobile-quick-item">
-        <div class="mq-left"><div class="mq-dot" style="background:var(--success);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">${fmtData(pg.data)}</div></div></div>
-        <div class="mq-value" style="color:var(--success);">${moeda(pg.valor)}</div>
-      </div>`;
-    }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade</div>';
+  const recentes = pgs.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+  if(ativEl){
+    ativEl.dataset.loaded = '1';
+    ativEl.innerHTML = recentes.length ?
+      recentes.map(pg => {
+        const e = esMap.get(pg.emprestimoId);
+        const c = e ? clMap.get(e.pessoaId) : null;
+        return `<div class="mobile-quick-item">
+          <div class="mq-left"><div class="mq-dot" style="background:var(--success);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">${fmtData(pg.data)}</div></div></div>
+          <div class="mq-value" style="color:var(--success);">${moeda(pg.valor)}</div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade</div>';
+  }
 
-  // Render calendar
-  await renderMobileCalendar();
+  // Calendário em background — não bloqueia retorno
+  renderMobileCalendar().catch(e => console.error('Mobile calendar error:', e));
 }
 
 async function renderMobileCalendar() {
@@ -4143,19 +4176,19 @@ async function salvarEdicaoContrato(eid,tipoContrato){
     novos.considerarDomingo !== antigos.considerarDomingo ||
     novos.considerarFeriado !== antigos.considerarFeriado;
 
+  // Salva as flags SEMPRE (defensivo: garante que DB reflete o estado do form)
+  upd.considerarSabado = novos.considerarSabado;
+  upd.considerarDomingo = novos.considerarDomingo;
+  upd.considerarFeriado = novos.considerarFeriado;
+
   let recalcularParcelas = false;
   if (flagsMudaram) {
     recalcularParcelas = await showConfirm(
-      'As preferências de dia útil foram alteradas.\n\n'+
-      'Deseja recalcular as parcelas AINDA NÃO PAGAS (com vencimento a partir de hoje) para o próximo dia útil?\n\n'+
+      'Preferências de dia útil alteradas.\n\n'+
+      'Recalcular as parcelas AINDA NÃO PAGAS (com vencimento a partir de hoje) empurrando para o próximo dia útil quando cair em feriado/sábado/domingo?\n\n'+
       '• Parcelas já quitadas NÃO serão afetadas.\n'+
-      '• Parcelas vencidas no passado NÃO serão afetadas.\n\n'+
-      'Clicar em Cancelar salva apenas a preferência, sem mexer nas datas.'
+      '• Clicar em Cancelar salva apenas a preferência, sem mexer nas datas.'
     );
-    // Salva as flags no contrato independentemente da resposta
-    upd.considerarSabado = novos.considerarSabado;
-    upd.considerarDomingo = novos.considerarDomingo;
-    upd.considerarFeriado = novos.considerarFeriado;
   }
 
   await dbUpdate('emprestimos',eid,upd);
@@ -4171,15 +4204,29 @@ async function salvarEdicaoContrato(eid,tipoContrato){
       p.status === 'pendente' &&
       p.dataVencimento >= h
     );
+    console.log('[recalc] pendentes:', pendentes.length, 'freq:', contratoAtual.frequencia, 'flags:', novos);
     // Aplica shift ACUMULATIVO: cada próxima parcela parte da anterior + step,
     // então feriado/sábado/domingo empurra em cascata sem colidir duas num mesmo dia.
     if (pendentes.length) {
       const freq = contratoAtual.frequencia || 'mensal';
       // Base: data de vencimento da parcela imediatamente anterior (por número),
-      // senão a dataContrato do empréstimo.
+      // senão a dataInicio do empréstimo.
       const primeira = pendentes[0];
       const anterior = todasDoContrato.find(p => (p.numero||0) === (primeira.numero||0) - 1);
-      const baseData = (anterior && anterior.dataVencimento) || contratoAtual.dataContrato || primeira.dataVencimento;
+      // FIX: campo correto é dataInicio, não dataContrato
+      let baseData;
+      if (anterior && anterior.dataVencimento) baseData = anterior.dataVencimento;
+      else if (contratoAtual.dataInicio) baseData = contratoAtual.dataInicio;
+      else {
+        // Último recurso: usa (primeira.dataVencimento - 1 step) pra que o primeiro output bata com a primeira pendente
+        const d = new Date(primeira.dataVencimento+'T00:00:00');
+        if (freq==='diario') d.setDate(d.getDate()-1);
+        else if (freq==='semanal') d.setDate(d.getDate()-7);
+        else if (freq==='quinzenal') d.setDate(d.getDate()-15);
+        else d.setMonth(d.getMonth()-1);
+        baseData = d.toISOString().slice(0,10);
+      }
+      console.log('[recalc] baseData:', baseData, 'primeira#:', primeira.numero, 'anterior:', anterior?'#'+anterior.numero+' @ '+anterior.dataVencimento:'(none)');
       // Para contratos não-recorrentes (parcela única / troca cheques), apenas ajusta a própria data.
       if (freq === 'avista' || freq === 'unica' || pendentes.length === 1) {
         for (const p of pendentes) {
@@ -4191,9 +4238,11 @@ async function salvarEdicaoContrato(eid,tipoContrato){
         }
       } else {
         const novasDatas = await gerarVencimentos(baseData, freq, pendentes.length, novos);
+        console.log('[recalc] novasDatas:', novasDatas);
         for (let i = 0; i < pendentes.length; i++) {
           const p = pendentes[i];
           const novaData = novasDatas[i];
+          console.log(`[recalc] P#${p.numero}: ${p.dataVencimento} -> ${novaData}`);
           if (novaData && novaData !== p.dataVencimento) {
             await dbUpdate('parcelas', p.id, { dataVencimento: novaData });
             parcelasAjustadas++;
@@ -4852,10 +4901,22 @@ async function renderCaixa() {
 // DASHBOARD
 // ================================================
 async function renderDashboard() {
+  // SKELETON imediato antes do fetch
+  const statsEl = document.getElementById('dash-stats');
+  if(statsEl && !statsEl.dataset.loaded){
+    statsEl.innerHTML = Array(5).fill('<div class="stat-card"><div class="label"><span class="skel skel-line" style="width:80px;">.</span></div><div class="value"><span class="skel skel-stat">.</span></div></div>').join('');
+  }
+  const skelList = '<div class="alert-item"><span class="name"><span class="skel skel-line" style="width:140px;">.</span></span><span class="detail"><span class="skel skel-val">.</span></span></div>'.repeat(4);
+  ['dash-alerts','dash-proximos','dash-atividade'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && !el.dataset.loaded) el.innerHTML = skelList;
+  });
+
+  // Calendar em background — não bloqueia dashboard
+  renderCalendar().catch(e=>console.error('Calendar error:',e));
   await loadMoedaConfig();
-  // Paralelizar calendar + queries
-  const [_,es,ps,pgs,cl,ds]=await Promise.all([
-    renderCalendar(),
+  // Paralelizar queries (calendar já em background)
+  const [es,ps,pgs,cl,ds]=await Promise.all([
     dbSelect('emprestimos'),
     dbSelect('parcelas'),
     dbSelect('pagamentos'),
@@ -4877,22 +4938,30 @@ async function renderDashboard() {
   const td=pgs.filter(p=>efIds.has(p.emprestimoId)&&(!fd||p.data>=fd)).reduce((s,p)=>s+p.valor,0);
   const ta=ps.filter(p=>efIds.has(p.emprestimoId)&&p.status==='pendente'&&p.dataVencimento<h).reduce((s,p)=>s+p.valorTotal,0);
   const tdesp=ds.filter(d=>!fd||d.data>=fd).reduce((s,d)=>s+d.valor,0);
-  document.getElementById('dash-stats').innerHTML=`
+  const statsElR=document.getElementById('dash-stats');
+  statsElR.innerHTML=`
     <div class="stat-card accent"><div class="label">Emprestado</div><div class="value">${moeda(te)}</div><div class="sub">${ef.length} contrato(s)</div></div>
     <div class="stat-card warning"><div class="label">A Receber</div><div class="value">${moeda(tr)}</div></div>
     <div class="stat-card success"><div class="label">Recebido</div><div class="value">${moeda(td)}</div></div>
     <div class="stat-card danger"><div class="label">Em Atraso</div><div class="value">${moeda(ta)}</div></div>
     <div class="stat-card info"><div class="label">Despesas</div><div class="value">${moeda(tdesp)}</div></div>`;
+  statsElR.dataset.loaded='1';
   // Alertas
   const atr=ps.filter(p=>p.status==='pendente'&&p.dataVencimento<h);
-  document.getElementById('dash-alerts').innerHTML=atr.length?atr.slice(0,10).map(p=>{const e=esMap.get(p.emprestimoId),c=e?clMap.get(e.pessoaId):null,dias=Math.floor((new Date()-new Date(p.dataVencimento))/864e5);return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="badge badge-danger">${dias}d</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atrasada</div>';
+  const alertsEl=document.getElementById('dash-alerts');
+  alertsEl.innerHTML=atr.length?atr.slice(0,10).map(p=>{const e=esMap.get(p.emprestimoId),c=e?clMap.get(e.pessoaId):null,dias=Math.floor((new Date()-new Date(p.dataVencimento))/864e5);return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="badge badge-danger">${dias}d</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atrasada</div>';
+  alertsEl.dataset.loaded='1';
   // Badge
   document.getElementById('badge-parcelas').textContent=atr.length;
   // Próximos
   const prox=ps.filter(p=>p.status==='pendente'&&p.dataVencimento>=h).sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento)).slice(0,10);
-  document.getElementById('dash-proximos').innerHTML=prox.length?prox.map(p=>{const e=esMap.get(p.emprestimoId),c=e?clMap.get(e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="detail">${fmtData(p.dataVencimento)} | ${moeda(p.valorTotal)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum pendente</div>';
+  const proxElR=document.getElementById('dash-proximos');
+  proxElR.innerHTML=prox.length?prox.map(p=>{const e=esMap.get(p.emprestimoId),c=e?clMap.get(e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'} #${p.numero}</span><span class="detail">${fmtData(p.dataVencimento)} | ${moeda(p.valorTotal)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhum pendente</div>';
+  proxElR.dataset.loaded='1';
   // Atividade
-  document.getElementById('dash-atividade').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8).map(pg=>{const e=esMap.get(pg.emprestimoId),c=e?clMap.get(e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'}</span><span class="detail">${fmtData(pg.data)} | ${moeda(pg.valor)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atividade</div>';
+  const ativElR=document.getElementById('dash-atividade');
+  ativElR.innerHTML=pgs.length?pgs.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8).map(pg=>{const e=esMap.get(pg.emprestimoId),c=e?clMap.get(e.pessoaId):null;return `<div class="alert-item"><span class="name">${c?esc(c.nome):'-'}</span><span class="detail">${fmtData(pg.data)} | ${moeda(pg.valor)}</span></div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Nenhuma atividade</div>';
+  ativElR.dataset.loaded='1';
   renderChart(pgs);
 }
 function renderChart(pgs) {
@@ -5348,17 +5417,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('landing-page').style.display = 'none';
     const loadingEl = document.getElementById('app-loading');
     loadingEl.style.display = 'flex';
-    // Load profile + essential tables in parallel
+    // ÚNICO bloqueante: profile (necessário pra saber qual tela mostrar)
     try {
-      await Promise.all([
-        loadProfile().catch(e => console.error('Profile error:', e)),
-        dbSelect('clientes').catch(e => console.error('Clientes error:', e)),
-        dbSelect('emprestimos').catch(e => console.error('Emprestimos error:', e)),
-        dbSelect('parcelas').catch(e => console.error('Parcelas error:', e)),
-        dbSelect('pagamentos').catch(e => console.error('Pagamentos error:', e))
-      ]);
-    } catch(e) { console.error('Boot error:', e); }
-    // Hide loading
+      await loadProfile().catch(e => console.error('Profile error:', e));
+    } catch(e) { console.error('Boot profile error:', e); }
+    // Dispara tabelas em paralelo — render progressivo usa cache/CACHE_LOADING
+    Promise.all([
+      dbSelect('clientes').catch(e => console.error('Clientes error:', e)),
+      dbSelect('emprestimos').catch(e => console.error('Emprestimos error:', e)),
+      dbSelect('parcelas').catch(e => console.error('Parcelas error:', e)),
+      dbSelect('pagamentos').catch(e => console.error('Pagamentos error:', e))
+    ]);
+    // Esconde loading assim que profile chega — shell aparece imediato
     loadingEl.style.display = 'none';
     // Biometric lock (se habilitado) — mostra tela de lock e interrompe fluxo até desbloquear
     const unlocked = await maybeRequireBiometric();
