@@ -3188,7 +3188,7 @@ function showConfirm(m) { return new Promise(r=>{ confirmResolve=r; document.get
 function closeConfirm(r) { document.getElementById('confirm-dialog').classList.remove('active'); if(confirmResolve){confirmResolve(r);confirmResolve=null;} }
 
 // NAV
-function navigateTo(p) {
+function navigateTo(p, fromPopState) {
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   const el=document.getElementById('page-'+p); if(el) el.classList.add('active');
@@ -3196,6 +3196,7 @@ function navigateTo(p) {
   document.getElementById('sidebar').classList.remove('open');
   const renders = {dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco};
   if(renders[p]) renders[p]();
+  if(!fromPopState)pushNavState({type:'page',page:p});
 }
 function navigateToPage(p) { document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); const el=document.getElementById('page-'+p); if(el) el.classList.add('active'); }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
@@ -3231,7 +3232,7 @@ function updateMobileThemeIcon() {
 // MOBILE NAVIGATION
 function isMobile() { return window.innerWidth <= 768; }
 
-function mobileNav(page) {
+function mobileNav(page, fromPopState) {
   // Show page
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);
@@ -3248,6 +3249,50 @@ function mobileNav(page) {
 
   // Scroll to top
   window.scrollTo(0, 0);
+
+  if(!fromPopState)pushNavState({type:'page',page:page});
+}
+
+// ================================================
+// HISTORY / GESTO DE VOLTAR (iOS swipe back)
+// ================================================
+function pushNavState(state){
+  try{history.pushState(state,'','#'+(state.page||state.type||''));}catch(e){}
+}
+
+function handlePopState(e){
+  const state=e.state;
+  // Sempre fecha qualquer modal aberto ao voltar
+  const openModals=document.querySelectorAll('.modal-overlay.active');
+  if(openModals.length){
+    window._closingFromPopState=true;
+    openModals.forEach(m=>m.classList.remove('active'));
+    setTimeout(()=>{window._closingFromPopState=false;},50);
+    // Se o state anterior for de página/contrato, aplica também
+  }
+  if(state){
+    if(state.type==='page'){
+      if(isMobile())mobileNav(state.page,true);
+      else navigateTo(state.page,true);
+    } else if(state.type==='contract'&&state.eid){
+      verContrato(state.eid,true);
+    }
+    // Se state é de modal, já foi fechado acima (não precisa reabrir)
+  } else {
+    // Sem state: volta pra home
+    if(currentUser){
+      if(isMobile())mobileNav('mobile-home',true);
+      else navigateTo('dashboard',true);
+    }
+  }
+}
+
+function initHistoryNav(){
+  window.removeEventListener('popstate',handlePopState);
+  window.addEventListener('popstate',handlePopState);
+  // Estado inicial
+  const initialPage=isMobile()?'mobile-home':'dashboard';
+  try{history.replaceState({type:'page',page:initialPage},'','#'+initialPage);}catch(e){}
 }
 
 async function renderMobileHome() {
@@ -3362,8 +3407,28 @@ async function renderMobileCalendar() {
     evDiv.innerHTML=calSelectedDate?`<div style="text-align:center;color:var(--text-muted);padding:8px;font-size:0.8rem;">Sem eventos em ${fmtData(showDate)}</div>`:'';
   }
 }
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) {
+  const el=document.getElementById(id);
+  if(!el)return;
+  const wasActive=el.classList.contains('active');
+  el.classList.add('active');
+  // Push state pra permitir fechar com swipe back — apenas se não estava aberto
+  if(!wasActive&&!window._ignoreModalState){
+    try{history.pushState({type:'modal',id:id},'','#modal-'+id);}catch(e){}
+  }
+}
+function closeModal(id) {
+  const el=document.getElementById(id);
+  if(!el)return;
+  const wasActive=el.classList.contains('active');
+  el.classList.remove('active');
+  // Se o modal estava aberto via pushState e não estamos fechando por popstate, desfaz o pushState
+  if(wasActive&&!window._closingFromPopState&&history.state&&history.state.type==='modal'&&history.state.id===id){
+    window._ignoreModalState=true;
+    history.back();
+    setTimeout(()=>{window._ignoreModalState=false;},50);
+  }
+}
 
 // ================================================
 // CÁLCULOS FINANCEIROS
@@ -4028,10 +4093,11 @@ function calcRiscoLocalSync(eid, allParcelas) {
 
 // DETALHE CONTRATO
 let currentEmpId=null;
-async function verContrato(eid) {
+async function verContrato(eid, fromPopState) {
   currentEmpId=eid;
   const [es,cl,allPs,allPgs,cfg]=await Promise.all([dbSelect('emprestimos'),dbSelect('clientes'),dbSelect('parcelas'),dbSelect('pagamentos'),getConfig()]);
   const e=es.find(x=>x.id===eid);if(!e)return;
+  if(!fromPopState)pushNavState({type:'contract',eid:eid});
   const p=cl.find(x=>x.id===e.pessoaId);
   const ps=allPs.filter(x=>x.emprestimoId===eid);
   const pgs=allPgs.filter(x=>x.emprestimoId===eid);
@@ -4987,6 +5053,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(!window._notifInterval)window._notifInterval=setInterval(checkNotifications,6*60*60*1000);
     // Pull to refresh (só inicializa uma vez)
     if(!window._pullInitialized){window._pullInitialized=true;initPullToRefresh();}
+    // Gesto de voltar (iOS swipe back)
+    if(!window._historyInitialized){window._historyInitialized=true;initHistoryNav();}
     // Preload remaining tables in background (cheques, despesas, cobradores)
     Promise.all([
       dbSelect('cheques'),
