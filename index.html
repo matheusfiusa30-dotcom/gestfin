@@ -838,6 +838,20 @@ table td { font-size: 0.85rem; }
 .modal-anexo-view img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: var(--radius); }
 .modal-anexo-view .anexo-close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 210; }
 
+/* PULL TO REFRESH */
+.pull-indicator { position: fixed; top: calc(env(safe-area-inset-top, 0) - 50px); left: 50%; transform: translateX(-50%) translateY(0); width: 46px; height: 46px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 300; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
+.pull-indicator.visible { opacity: 1; }
+.pull-indicator .pull-arrow { width: 20px; height: 20px; color: var(--accent); transition: transform 0.2s ease; }
+.pull-indicator.ready .pull-arrow { transform: rotate(180deg); }
+.pull-indicator.refreshing .pull-arrow { display: none; }
+.pull-indicator .pull-spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; display: none; animation: pull-spin 0.8s linear infinite; }
+.pull-indicator.refreshing .pull-spinner { display: block; }
+@keyframes pull-spin { to { transform: rotate(360deg); } }
+/* Previne overscroll bounce do iOS no mobile */
+@media (max-width: 768px) {
+  html, body { overscroll-behavior-y: contain; }
+}
+
 /* NOTIFICATION BELL - Desktop (fixed top-right) */
 .notif-bell-desktop { position: fixed; top: calc(20px + env(safe-area-inset-top, 0)); right: calc(20px + env(safe-area-inset-right, 0)); z-index: 150; width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: transform var(--transition); }
 .notif-bell-desktop:hover { transform: scale(1.05); }
@@ -2209,6 +2223,12 @@ table td { font-size: 0.85rem; }
   <div class="modal"><img id="anexo-view-img" src="" alt="Anexo"></div>
 </div>
 
+<!-- PULL TO REFRESH INDICATOR -->
+<div class="pull-indicator" id="pull-indicator">
+  <svg class="pull-arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+  <div class="pull-spinner"></div>
+</div>
+
 <!-- NOTIFICATION BELL DESKTOP + DROPDOWN -->
 <button class="notif-bell-desktop" onclick="toggleNotifDropdown()" id="notif-bell-desk" type="button" style="display:none;">
   <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2621,6 +2641,84 @@ function marcarTodasLidas(){
   // Zerar badge temporariamente
   ['notif-badge-mob','notif-badge-desk'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   toast('Notificações marcadas como lidas');
+}
+
+// ================================================
+// PULL TO REFRESH
+// ================================================
+let _pullStartY=0,_pullDelta=0,_isPulling=false,_isRefreshing=false;
+const _PULL_THRESHOLD=75;
+
+function initPullToRefresh(){
+  const ind=document.getElementById('pull-indicator');
+  if(!ind)return;
+
+  document.addEventListener('touchstart',(e)=>{
+    if(_isRefreshing)return;
+    // Só ativa quando está no topo da página
+    if(window.scrollY>0||document.documentElement.scrollTop>0)return;
+    // Ignora se está dentro de um modal aberto, dropdown ou elemento scrollável
+    const target=e.target;
+    if(target.closest('.modal-overlay.active'))return;
+    if(target.closest('.notif-dropdown.active'))return;
+    if(target.closest('.mobile-profile-dropdown.active'))return;
+    // Ignora se está dentro de tabela com scroll horizontal ou lista scrollável
+    const scrollable=target.closest('.table-wrapper, .alert-list, .calendar-events, .anexos-grid');
+    if(scrollable && scrollable.scrollTop>0)return;
+    _pullStartY=e.touches[0].clientY;
+    _isPulling=true;
+    _pullDelta=0;
+  },{passive:true});
+
+  document.addEventListener('touchmove',(e)=>{
+    if(!_isPulling||_isRefreshing)return;
+    _pullDelta=e.touches[0].clientY-_pullStartY;
+    if(_pullDelta<=0){
+      ind.classList.remove('visible','ready');
+      ind.style.transform='';
+      return;
+    }
+    // Dampen: quanto mais puxa, mais resistência
+    const damped=Math.min(_pullDelta*0.5, 120);
+    const topBase=40; // posição visível base
+    ind.style.transform=`translateX(-50%) translateY(${topBase+damped*0.5}px)`;
+    ind.classList.add('visible');
+    if(_pullDelta>_PULL_THRESHOLD)ind.classList.add('ready');
+    else ind.classList.remove('ready');
+  },{passive:true});
+
+  document.addEventListener('touchend',async ()=>{
+    if(!_isPulling)return;
+    _isPulling=false;
+    if(_pullDelta>_PULL_THRESHOLD&&!_isRefreshing){
+      _isRefreshing=true;
+      ind.classList.add('refreshing');
+      ind.style.transform='translateX(-50%) translateY(60px)';
+      try{await doRefresh();}catch(e){console.error('Refresh error:',e);}
+      _isRefreshing=false;
+      ind.classList.remove('refreshing','ready','visible');
+      ind.style.transform='';
+    } else {
+      ind.classList.remove('visible','ready');
+      ind.style.transform='';
+    }
+    _pullDelta=0;
+  });
+}
+
+async function doRefresh(){
+  // Invalidar cache e re-fetch
+  invalidateAllCache();
+  // Re-renderizar página ativa
+  const activePage=document.querySelector('.page.active');
+  if(activePage){
+    const pageId=activePage.id.replace('page-','');
+    const renders={dashboard:renderDashboard,contratos:renderContratos,clientes:renderClientes,cheques:renderCheques,'receber-parcela':renderReceberParcela,'receber-cheque':renderReceberCheque,despesas:renderDespesas,cobradores:renderCobradores,relatorios:renderRelatorios,caixa:renderCaixa,config:renderConfig,'ia-risco':renderIARisco,'mobile-home':renderMobileHome,'contrato-detalhe':()=>currentEmpId&&verContrato(currentEmpId)};
+    if(renders[pageId])await renders[pageId]();
+  }
+  // Atualizar notificações também
+  if(typeof checkNotifications==='function')await checkNotifications();
+  toast('Atualizado!');
 }
 
 async function updateSidebarPlan() {
@@ -4867,6 +4965,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(bellDesk)bellDesk.style.display='flex';
     checkNotifications();
     if(!window._notifInterval)window._notifInterval=setInterval(checkNotifications,6*60*60*1000);
+    // Pull to refresh (só inicializa uma vez)
+    if(!window._pullInitialized){window._pullInitialized=true;initPullToRefresh();}
     // Preload remaining tables in background (cheques, despesas, cobradores)
     Promise.all([
       dbSelect('cheques'),
