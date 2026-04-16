@@ -623,11 +623,17 @@ table td { font-size: 0.85rem; }
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 40px; height: 70px;
-  padding-top: env(safe-area-inset-top, 0);
   box-sizing: content-box;
   background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0,0,0,0.06);
   transition: all 0.3s ease;
+}
+/* iOS PWA: garante respiro no topo com fallback */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .lp-header { padding-top: env(safe-area-inset-top); }
+}
+@media (display-mode: standalone) {
+  .lp-header { padding-top: max(env(safe-area-inset-top, 0), 50px) !important; }
 }
 .lp-header.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
 .lp-logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; color: #1b5e20; text-decoration: none; }
@@ -812,7 +818,7 @@ table td { font-size: 0.85rem; }
 /* Landing page responsive */
 @media (max-width: 768px) {
   #landing-page { display: block; }
-  .lp-header { padding: 0 16px; height: 60px; padding-top: env(safe-area-inset-top, 0); }
+  .lp-header { padding-left: 16px; padding-right: 16px; height: 60px; }
   .lp-nav { display: none; }
   .lp-hero h1 { font-size: 2rem; }
   .lp-hero p { font-size: 1rem; }
