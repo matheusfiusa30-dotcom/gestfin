@@ -553,13 +553,7 @@ table td { font-size: 0.85rem; }
   .notif-dropdown { top: calc(70px + env(safe-area-inset-top, 0)); }
 }
 @media (max-width: 768px) and (display-mode: standalone) {
-  /* SOLUÇÃO FORTE: aplica padding-top no body inteiro */
-  /* max() garante mínimo 50px (Dynamic Island) mesmo se env() falhar */
-  body { padding-top: max(env(safe-area-inset-top, 0), 50px) !important; background: var(--bg-primary); }
-  /* Mobile-home tem gradiente: puxa header pra cima pra cobrir o padding do body, mas mantem texto abaixo */
-  .mobile-home .mobile-header { margin-top: calc(-1 * max(env(safe-area-inset-top, 0), 50px)); padding-top: max(calc(24px + env(safe-area-inset-top, 0)), 74px) !important; }
-  /* Reset safe-area nos headers individuais (body ja cuida) */
-  .mobile-page-header { padding-top: 12px !important; top: 0 !important; }
+  /* Cada elemento do topo cuida do seu proprio safe-area (ja aplicado via env() direto neles) */
   .notif-dropdown { top: calc(60px + env(safe-area-inset-top, 0)); }
   /* Padding bottom para evitar cortes na barra home do iPhone */
   body, #app-container { padding-bottom: env(safe-area-inset-bottom, 0); }
@@ -815,15 +809,15 @@ table td { font-size: 0.85rem; }
 /* Landing page responsive */
 @media (max-width: 768px) {
   #landing-page { display: block; }
-  .lp-header { padding-left: 16px; padding-right: 16px; height: 48px; }
-  .lp-btn-login { padding: 6px 16px; font-size: 0.85rem; }
-  .lp-btn-cta { padding: 8px 18px; font-size: 0.85rem; }
-  .lp-logo { font-size: 1.2rem; }
-  .lp-logo svg { width: 26px; height: 26px; }
+  .lp-header { padding-left: 16px; padding-right: 16px; height: 44px; }
+  .lp-btn-login { padding: 5px 14px; font-size: 0.8rem; }
+  .lp-btn-cta { padding: 6px 16px; font-size: 0.8rem; }
+  .lp-logo { font-size: 1.1rem; }
+  .lp-logo svg { width: 24px; height: 24px; }
   .lp-nav { display: none; }
   .lp-hero h1 { font-size: 2rem; }
   .lp-hero p { font-size: 1rem; }
-  .lp-hero { padding: calc(70px + env(safe-area-inset-top, 0)) 20px 50px; min-height: auto; }
+  .lp-hero { padding: calc(60px + env(safe-area-inset-top, 0)) 20px 40px; min-height: auto; }
   .lp-features-grid { grid-template-columns: 1fr; gap: 16px; }
   .lp-about-grid { grid-template-columns: 1fr; gap: 30px; }
   .lp-pricing-grid { grid-template-columns: 1fr; gap: 16px; }
