@@ -1,7 +1,7 @@
 // Service Worker mínimo — necessário para PWA
 // Não faz cache agressivo para não quebrar updates do app
 
-const CACHE_NAME = 'gestfin-v1';
+const CACHE_NAME = 'gestfin-v2';
 
 self.addEventListener('install', (event) => {
   // Ativa imediatamente sem esperar

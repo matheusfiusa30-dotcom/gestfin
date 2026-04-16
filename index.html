@@ -553,9 +553,13 @@ table td { font-size: 0.85rem; }
   .notif-dropdown { top: calc(70px + env(safe-area-inset-top, 0)); }
 }
 @media (max-width: 768px) and (display-mode: standalone) {
-  /* Mobile PWA: garantir que qualquer tela sem header mobile tenha respiro do topo */
-  .page:not(.mobile-home) > .page-header { padding-top: calc(8px + env(safe-area-inset-top, 0)); }
-  .page > .page-header:first-child { padding-top: calc(8px + env(safe-area-inset-top, 0)); }
+  /* SOLUÇÃO FORTE: aplica padding-top no body inteiro */
+  /* max() garante mínimo 50px (Dynamic Island) mesmo se env() falhar */
+  body { padding-top: max(env(safe-area-inset-top, 0), 50px) !important; background: var(--bg-primary); }
+  /* Mobile-home tem gradiente: puxa header pra cima pra cobrir o padding do body, mas mantem texto abaixo */
+  .mobile-home .mobile-header { margin-top: calc(-1 * max(env(safe-area-inset-top, 0), 50px)); padding-top: max(calc(24px + env(safe-area-inset-top, 0)), 74px) !important; }
+  /* Reset safe-area nos headers individuais (body ja cuida) */
+  .mobile-page-header { padding-top: 12px !important; top: 0 !important; }
   .notif-dropdown { top: calc(60px + env(safe-area-inset-top, 0)); }
   /* Padding bottom para evitar cortes na barra home do iPhone */
   body, #app-container { padding-bottom: env(safe-area-inset-bottom, 0); }
@@ -4888,9 +4892,24 @@ async function renderCalendarEvents(events) {
 // INIT
 // ================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Registra service worker (PWA)
+  // Registra service worker (PWA) + força checar atualizações
   if('serviceWorker' in navigator){
-    try{await navigator.serviceWorker.register('/sw.js');}catch(e){console.warn('SW error:',e);}
+    try{
+      const reg=await navigator.serviceWorker.register('/sw.js');
+      // Força update check
+      reg.update().catch(()=>{});
+      // Se encontrou SW novo, ativa e recarrega
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='activated'&&navigator.serviceWorker.controller){
+            // Há uma nova versão ativa; recarrega silenciosamente após 2s
+            setTimeout(()=>window.location.reload(),2000);
+          }
+        });
+      });
+    }catch(e){console.warn('SW error:',e);}
   }
   // Migrate old data if exists
   const oldCl=localStorage.getItem('gestfin_pessoas');
