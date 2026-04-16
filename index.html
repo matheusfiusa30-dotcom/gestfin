@@ -626,9 +626,9 @@ table td { font-size: 0.85rem; }
 @supports (padding-top: env(safe-area-inset-top)) {
   .lp-header { padding-top: calc(env(safe-area-inset-top) + 24px); }
 }
-/* iOS PWA standalone: header compacto mas com folga da Dynamic Island */
+/* iOS PWA standalone: header transparente pro verde subir até o topo */
 @media (display-mode: standalone) and (max-width: 768px) {
-  .lp-header { height: 36px !important; padding-top: calc(env(safe-area-inset-top) + 24px) !important; border-bottom: none; background: rgba(255,255,255,0.92); }
+  .lp-header { height: 36px !important; padding-top: calc(env(safe-area-inset-top) + 24px) !important; border-bottom: none; background: transparent; backdrop-filter: none; }
 }
 .lp-header.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
 .lp-logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; color: #1b5e20; text-decoration: none; }
@@ -815,7 +815,7 @@ table td { font-size: 0.85rem; }
 /* Landing page responsive */
 @media (max-width: 768px) {
   #landing-page { display: block; }
-  .lp-header { padding-left: 14px; padding-right: 14px; height: 36px; padding-top: calc(env(safe-area-inset-top, 0px) + 24px); }
+  .lp-header { padding-left: 14px; padding-right: 14px; height: 36px; padding-top: calc(env(safe-area-inset-top, 0px) + 24px); background: transparent; backdrop-filter: none; border-bottom: none; }
   .lp-btn-login { padding: 4px 10px; font-size: 0.72rem; border-width: 1px; border-radius: 6px; }
   .lp-btn-cta { padding: 4px 12px; font-size: 0.72rem; border-radius: 6px; box-shadow: none; }
   .lp-logo { font-size: 0.95rem; gap: 6px; }
