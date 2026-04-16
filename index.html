@@ -3256,43 +3256,40 @@ function mobileNav(page, fromPopState) {
 // ================================================
 // HISTORY / GESTO DE VOLTAR (iOS swipe back)
 // ================================================
+// IMPORTANTE: NAO mexer no hash/URL pra nao conflitar com OAuth do Supabase
 function pushNavState(state){
-  try{history.pushState(state,'','#'+(state.page||state.type||''));}catch(e){}
+  // Marca internamente pra ignorar state do GestFin ao invés de URL
+  try{history.pushState({...state,_gf:true},'');}catch(e){}
 }
 
 function handlePopState(e){
   const state=e.state;
+  // Ignora popstates que não são nossos (ex: hashchange de OAuth)
+  if(state && !state._gf && !state.type)return;
   // Sempre fecha qualquer modal aberto ao voltar
   const openModals=document.querySelectorAll('.modal-overlay.active');
   if(openModals.length){
     window._closingFromPopState=true;
     openModals.forEach(m=>m.classList.remove('active'));
     setTimeout(()=>{window._closingFromPopState=false;},50);
-    // Se o state anterior for de página/contrato, aplica também
   }
-  if(state){
+  if(state&&state._gf){
     if(state.type==='page'){
       if(isMobile())mobileNav(state.page,true);
       else navigateTo(state.page,true);
     } else if(state.type==='contract'&&state.eid){
       verContrato(state.eid,true);
     }
-    // Se state é de modal, já foi fechado acima (não precisa reabrir)
-  } else {
-    // Sem state: volta pra home
-    if(currentUser){
-      if(isMobile())mobileNav('mobile-home',true);
-      else navigateTo('dashboard',true);
-    }
   }
+  // Se for state sem _gf (inicial), não faz nada — deixa tela atual
 }
 
 function initHistoryNav(){
   window.removeEventListener('popstate',handlePopState);
   window.addEventListener('popstate',handlePopState);
-  // Estado inicial
+  // Estado inicial marcado como GestFin, sem alterar URL
   const initialPage=isMobile()?'mobile-home':'dashboard';
-  try{history.replaceState({type:'page',page:initialPage},'','#'+initialPage);}catch(e){}
+  try{history.replaceState({_gf:true,type:'page',page:initialPage},'');}catch(e){}
 }
 
 async function renderMobileHome() {
@@ -3412,9 +3409,9 @@ function openModal(id) {
   if(!el)return;
   const wasActive=el.classList.contains('active');
   el.classList.add('active');
-  // Push state pra permitir fechar com swipe back — apenas se não estava aberto
-  if(!wasActive&&!window._ignoreModalState){
-    try{history.pushState({type:'modal',id:id},'','#modal-'+id);}catch(e){}
+  // Push state pra permitir fechar com swipe back (apenas se app inicializou history)
+  if(!wasActive&&!window._ignoreModalState&&window._historyInitialized){
+    try{history.pushState({_gf:true,type:'modal',id:id},'');}catch(e){}
   }
 }
 function closeModal(id) {
@@ -3423,7 +3420,7 @@ function closeModal(id) {
   const wasActive=el.classList.contains('active');
   el.classList.remove('active');
   // Se o modal estava aberto via pushState e não estamos fechando por popstate, desfaz o pushState
-  if(wasActive&&!window._closingFromPopState&&history.state&&history.state.type==='modal'&&history.state.id===id){
+  if(wasActive&&!window._closingFromPopState&&history.state&&history.state._gf&&history.state.type==='modal'&&history.state.id===id){
     window._ignoreModalState=true;
     history.back();
     setTimeout(()=>{window._ignoreModalState=false;},50);
@@ -5092,9 +5089,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!appBooted) showLanding();
   }, 2000);
 
-  // Clean OAuth hash fragment
+  // Clean OAuth hash fragment — preserva o state de navegação se já existir
   if (window.location.hash && window.location.hash.includes('access_token')) {
-    window.history.replaceState({}, '', window.location.pathname);
+    const keep=history.state&&history.state._gf?history.state:null;
+    window.history.replaceState(keep, '', window.location.pathname);
   }
 });
 </script>
