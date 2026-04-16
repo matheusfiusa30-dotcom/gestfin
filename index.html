@@ -632,9 +632,6 @@ table td { font-size: 0.85rem; }
 @supports (padding-top: env(safe-area-inset-top)) {
   .lp-header { padding-top: env(safe-area-inset-top); }
 }
-@media (display-mode: standalone) {
-  .lp-header { padding-top: max(env(safe-area-inset-top, 0), 50px) !important; }
-}
 .lp-header.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
 .lp-logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; color: #1b5e20; text-decoration: none; }
 .lp-logo svg { width: 32px; height: 32px; color: #2e7d32; }
@@ -818,11 +815,15 @@ table td { font-size: 0.85rem; }
 /* Landing page responsive */
 @media (max-width: 768px) {
   #landing-page { display: block; }
-  .lp-header { padding-left: 16px; padding-right: 16px; height: 60px; }
+  .lp-header { padding-left: 16px; padding-right: 16px; height: 48px; }
+  .lp-btn-login { padding: 6px 16px; font-size: 0.85rem; }
+  .lp-btn-cta { padding: 8px 18px; font-size: 0.85rem; }
+  .lp-logo { font-size: 1.2rem; }
+  .lp-logo svg { width: 26px; height: 26px; }
   .lp-nav { display: none; }
   .lp-hero h1 { font-size: 2rem; }
   .lp-hero p { font-size: 1rem; }
-  .lp-hero { padding: calc(100px + env(safe-area-inset-top, 0)) 20px 60px; min-height: auto; }
+  .lp-hero { padding: calc(70px + env(safe-area-inset-top, 0)) 20px 50px; min-height: auto; }
   .lp-features-grid { grid-template-columns: 1fr; gap: 16px; }
   .lp-about-grid { grid-template-columns: 1fr; gap: 30px; }
   .lp-pricing-grid { grid-template-columns: 1fr; gap: 16px; }
