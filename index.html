@@ -4049,49 +4049,61 @@ function tracarRota(clienteId){
     window.open(url,'_blank');
   });
 }
+let _salvandoPagamento=false;
 async function salvarPagamento() {
+  // Proteção contra double-click
+  if(_salvandoPagamento)return;
   const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=parseFloat(document.getElementById('pag-valor').value),d=document.getElementById('pag-data').value,t=document.getElementById('pag-tipo').value;
   if(!v||!d){toast('Preencha valor e data','error');return;}
-  const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);if(!p)return;
-  const cfg=await getConfig();
-  const mr=p.dataVencimento<d?calcMoraSync(p.dataVencimento,d,p.valorTotal,cfg):0;
-  const newValorPago=(p.valorPago||0)+v;
-  let obs=document.getElementById('pag-obs').value.trim();
+  _salvandoPagamento=true;
+  // Desabilitar botão visualmente
+  const btnConfirmar=document.querySelector('#modal-pagamento .btn-success');
+  if(btnConfirmar){btnConfirmar.disabled=true;btnConfirmar.textContent='Salvando...';}
+  try {
+    const ps=await dbSelect('parcelas'),p=ps.find(x=>x.id===pid);if(!p)return;
+    const cfg=await getConfig();
+    const mr=p.dataVencimento<d?calcMoraSync(p.dataVencimento,d,p.valorTotal,cfg):0;
+    const newValorPago=(p.valorPago||0)+v;
+    let obs=document.getElementById('pag-obs').value.trim();
 
-  // Definir status com base nas opções selecionadas
-  let newStatus=p.status;
-  if(_pagDescontoAtivo){
-    newStatus='paga';
-    const diff=p.valorTotal+mr-v;
-    obs=`${obs?obs+' | ':''}[Desconto aplicado: ${moeda(diff)}]`;
-  } else if(t==='juros'){
-    // Pagamento só dos juros — parcela continua pendente
-    newStatus=p.status;
-  } else if(t==='total'||newValorPago>=p.valorTotal){
-    newStatus='paga';
+    // Definir status com base nas opções selecionadas
+    let newStatus=p.status;
+    if(_pagDescontoAtivo){
+      newStatus='paga';
+      const diff=p.valorTotal+mr-v;
+      obs=`${obs?obs+' | ':''}[Desconto aplicado: ${moeda(diff)}]`;
+    } else if(t==='juros'){
+      // Pagamento só dos juros — parcela continua pendente
+      newStatus=p.status;
+    } else if(t==='total'||newValorPago>=p.valorTotal){
+      newStatus='paga';
+    }
+
+    await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
+    const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:obs};
+    await dbInsert('pagamentos',pagRecord);
+    invalidateCache('parcelas');invalidateCache('pagamentos');
+    closeModal('modal-pagamento');toast('Pagamento registrado!');
+
+    // WhatsApp: confirmar quitação da parcela ou contrato
+    const es=await dbSelect('emprestimos'),emp=es.find(x=>x.id===eid);
+    const cls=await dbSelect('clientes'),cliente=emp?cls.find(x=>x.id===emp.pessoaId):null;
+    const allParcelas=(await dbSelect('parcelas')).filter(x=>x.emprestimoId===eid);
+    const allPaid=allParcelas.every(x => x.id===pid ? newStatus==='paga' : x.status==='paga');
+    if(allPaid && newStatus==='paga') {
+      await dbUpdate('emprestimos',eid,{status:'quitado'});
+      invalidateCache('emprestimos');
+      updateSidebarPlan();
+      setTimeout(()=>{ showQuitacaoContratoWhatsApp(cliente, emp, allParcelas); }, 300);
+    } else {
+      setTimeout(()=>{ showPagamentoWhatsApp(cliente, p, v, d, newStatus==='paga'); }, 300);
+    }
+
+    verContrato(eid);
+  } finally {
+    _salvandoPagamento=false;
+    if(btnConfirmar){btnConfirmar.disabled=false;btnConfirmar.textContent='Confirmar';}
   }
-
-  await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
-  const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:obs};
-  await dbInsert('pagamentos',pagRecord);
-  invalidateCache('parcelas');invalidateCache('pagamentos');
-  closeModal('modal-pagamento');toast('Pagamento registrado!');
-
-  // WhatsApp: confirmar quitação da parcela ou contrato
-  const es=await dbSelect('emprestimos'),emp=es.find(x=>x.id===eid);
-  const cls=await dbSelect('clientes'),cliente=emp?cls.find(x=>x.id===emp.pessoaId):null;
-  const allParcelas=(await dbSelect('parcelas')).filter(x=>x.emprestimoId===eid);
-  const allPaid=allParcelas.every(x => x.id===pid ? newStatus==='paga' : x.status==='paga');
-  if(allPaid && newStatus==='paga') {
-    await dbUpdate('emprestimos',eid,{status:'quitado'});
-    invalidateCache('emprestimos');
-    updateSidebarPlan();
-    setTimeout(()=>{ showQuitacaoContratoWhatsApp(cliente, emp, allParcelas); }, 300);
-  } else {
-    setTimeout(()=>{ showPagamentoWhatsApp(cliente, p, v, d, newStatus==='paga'); }, 300);
-  }
-
-  verContrato(eid);
 }
 async function gerarRecibo() {
   const pid=document.getElementById('pag-parcela-id').value,eid=document.getElementById('pag-emprestimo-id').value,v=document.getElementById('pag-valor').value,d=document.getElementById('pag-data').value;
