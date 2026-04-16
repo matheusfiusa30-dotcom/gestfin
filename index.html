@@ -3251,28 +3251,19 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ================================================
 // CÁLCULOS FINANCEIROS
 // ================================================
-function mesesDoContrato(nParcelas, freq) {
-  // Mês comercial: mensal=1, quinzenal=2, semanal=4, diário=30 parcelas por mês
-  const parcelasPorMes = { diario: 30, semanal: 4, quinzenal: 2, mensal: 1 };
-  return nParcelas / (parcelasPorMes[freq] || 1);
-}
-function calcJurosSimples(v,t,nParcelas,nMeses) {
-  // Juros incide sobre os meses, parcelas só dividem o pagamento
-  const i=t/100, totalJuros=v*i*nMeses, totalGeral=v+totalJuros, pmt=totalGeral/nParcelas;
+function calcJurosFixo(v,t,nParcelas) {
+  // Taxa = juros TOTAL do contrato (independente de prazo/frequência)
+  // Ex: R$1000 a 20% = R$200 de juros, sempre
+  const totalJuros=v*(t/100), totalGeral=v+totalJuros, pmt=totalGeral/nParcelas;
   const jurosPorParcela=totalJuros/nParcelas, amortPorParcela=v/nParcelas, ps=[];
   let s=v;
   for(let x=1;x<=nParcelas;x++){s-=amortPorParcela; ps.push({numero:x,amortizacao:amortPorParcela,juros:jurosPorParcela,parcela:pmt,saldo:Math.max(s,0)});}
   return ps;
 }
-function calcJurosCompostos(v,t,nParcelas,nMeses) {
-  // Para compostos: calcula juros total composto pelos meses, depois divide em parcelas iguais
-  const i=t/100, totalComposto=v*Math.pow(1+i,nMeses), totalJuros=totalComposto-v;
-  const pmt=totalComposto/nParcelas, jurosPorParcela=totalJuros/nParcelas, amortPorParcela=v/nParcelas, ps=[];
-  let s=v;
-  for(let x=1;x<=nParcelas;x++){s-=amortPorParcela; ps.push({numero:x,amortizacao:amortPorParcela,juros:jurosPorParcela,parcela:pmt,saldo:Math.max(s,0)});}
-  return ps;
-}
-function calcParcelas(v,t,n,tipo,freq) { const nm=mesesDoContrato(n,freq||'mensal'); return tipo==='composto' ? calcJurosCompostos(v,t,n,nm) : calcJurosSimples(v,t,n,nm); }
+// Mantém nomes antigos por compatibilidade — ambos usam taxa como juros total
+function calcJurosSimples(v,t,nParcelas){ return calcJurosFixo(v,t,nParcelas); }
+function calcJurosCompostos(v,t,nParcelas){ return calcJurosFixo(v,t,nParcelas); }
+function calcParcelas(v,t,n,tipo,freq) { return calcJurosFixo(v,t,n); }
 async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function gerarVencimentos(dataInicio, frequencia, nParcelas) {
@@ -3621,7 +3612,7 @@ async function salvarAnexosTemp(contratoId){
 function previewParcelaUnica() {
   const v=parseFloat(document.getElementById('pu-valor').value),t=parseFloat(document.getElementById('pu-taxa').value),d=parseInt(document.getElementById('pu-dias').value),ini=document.getElementById('pu-inicio').value;
   if(!v||!t||!d||!ini){toast('Preencha os campos','error');return;}
-  const juros=v*(t/100)*(d/30);const total=v+juros;
+  const juros=v*(t/100);const total=v+juros;
   const venc=new Date(ini);venc.setDate(venc.getDate()+d);
   document.getElementById('pu-juros-val').textContent=moeda(juros);
   document.getElementById('pu-total-val').textContent=moeda(total);
@@ -3728,7 +3719,7 @@ async function salvarParcelaUnica(cl) {
   const pid=document.getElementById('pu-pessoa').value,v=parseFloat(document.getElementById('pu-valor').value),t=parseFloat(document.getElementById('pu-taxa').value),dias=parseInt(document.getElementById('pu-dias').value),ini=document.getElementById('pu-inicio').value;
   if(!pid||!v||!t||!dias||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
-  const juros=v*(t/100)*(dias/30);const total=v+juros;
+  const juros=v*(t/100);const total=v+juros;
   const venc=new Date(ini);venc.setDate(venc.getDate()+dias);const vencStr=venc.toISOString().split('T')[0];
   const eid=genId();
   const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'simples',sistema:'parcela-unica',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('pu-obs').value.trim()||'')+` [Parcela única - ${dias} dias]`,criadoEm:today(),renegociadoDe:null};
