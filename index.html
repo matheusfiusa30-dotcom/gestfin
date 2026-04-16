@@ -1782,6 +1782,33 @@ table td { font-size: 0.85rem; }
     <button class="btn btn-ghost" onclick="resetarMensagens()" style="margin-left:8px;">Restaurar Padrão</button>
   </div>
   <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Feriados & Dias Úteis</h3></div>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:12px;">
+      O GestFin sincroniza automaticamente os <strong>feriados nacionais</strong> do Brasil
+      via BrasilAPI. Adicione abaixo <strong>feriados municipais/estaduais</strong> da sua cidade
+      para que o sistema considere ao gerar vencimentos.
+    </p>
+    <div class="form-row">
+      <div class="form-group"><label>Cidade</label><input class="form-control" id="cfg-cidade" placeholder="Ex: Belo Horizonte"></div>
+      <div class="form-group"><label>UF</label><input class="form-control" id="cfg-uf" placeholder="MG" maxlength="2" style="text-transform:uppercase;"></div>
+    </div>
+    <div class="form-row" style="align-items:flex-end;">
+      <div class="form-group"><label>Data do Feriado</label><input class="form-control" type="date" id="cfg-feriado-data"></div>
+      <div class="form-group"><label>Descrição</label><input class="form-control" id="cfg-feriado-desc" placeholder="Ex: Aniversário da cidade"></div>
+      <div class="form-group" style="flex:0 0 auto;"><button class="btn btn-primary" onclick="addFeriadoCustom()">Adicionar</button></div>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:0.85rem;">Feriados customizados</strong>
+        <button class="btn btn-ghost btn-sm" onclick="sincronizarFeriadosNacionais()" title="Recarrega os feriados nacionais do ano atual">🔄 Sincronizar nacionais</button>
+      </div>
+      <div id="cfg-feriados-list" style="max-height:180px;overflow-y:auto;background:var(--bg-primary);border-radius:var(--radius-sm);padding:8px;">
+        <p style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px 0;">Nenhum feriado customizado</p>
+      </div>
+      <div id="cfg-feriados-nacionais" style="margin-top:10px;font-size:0.75rem;color:var(--text-muted);"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>Meu Plano</h3></div>
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
       <div>
@@ -2052,6 +2079,16 @@ table td { font-size: 0.85rem; }
         </div>
         <button class="btn btn-ghost" onclick="previewTrocaCheque()" style="margin-top:8px;">Calcular</button>
         <div class="form-group" style="margin-top:8px;"><label>Observações</label><textarea class="form-control" id="tc-obs"></textarea></div>
+      </div>
+      <!-- DIAS ÚTEIS / FERIADOS (compartilhado entre as 3 modalidades) -->
+      <div style="background:var(--bg-primary);border-radius:var(--radius-sm);padding:12px;margin-top:14px;">
+        <label style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;display:block;">Dias válidos para vencimento</label>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" id="cfg-considerar-sabado" checked> Considerar Sábado</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" id="cfg-considerar-domingo" checked> Considerar Domingo</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" id="cfg-considerar-feriado" checked> Considerar Feriado</label>
+        </div>
+        <small style="color:var(--text-muted);display:block;margin-top:6px;font-size:0.72rem;">Desmarque para mover parcelas desses dias para o próximo dia útil.</small>
       </div>
       <div id="emp-preview" style="display:none;margin-top:12px;">
         <div class="table-wrapper" style="max-height:250px;overflow-y:auto;">
@@ -2975,7 +3012,7 @@ window.addEventListener('scroll', () => {
 // Column name mapping (JS camelCase -> SQL snake_case)
 const COL_MAP = {
   clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', limiteCredito:'limite_credito', criadoEm:'criado_em' },
-  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de' },
+  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de', considerarSabado:'considerar_sabado', considerarDomingo:'considerar_domingo', considerarFeriado:'considerar_feriado' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
   pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
   cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
@@ -3452,23 +3489,171 @@ function calcJurosCompostos(v,t,nParcelas){ return calcJurosFixo(v,t,nParcelas);
 function calcParcelas(v,t,n,tipo,freq) { return calcJurosFixo(v,t,n); }
 async function calcMora(dv,dp,vp) { const c=await getConfig(),tx=c.jurosMoraPadrao||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
 function calcMoraSync(dv,dp,vp,cfg) { const tx=(cfg&&cfg.jurosMoraPadrao)||0.033,v=new Date(dv),p=dp?new Date(dp):new Date(),d=Math.max(0,Math.floor((p-v)/864e5)); return d>0?vp*(tx/100)*d:0; }
-function gerarVencimentos(dataInicio, frequencia, nParcelas) {
-  const ini = new Date(dataInicio);
+// ===== FERIADOS & DIA ÚTIL =====
+const FERIADOS_CACHE = {}; // ano -> Set<'YYYY-MM-DD'>
+async function getFeriadosNacionais(ano){
+  if(FERIADOS_CACHE[ano]) return FERIADOS_CACHE[ano];
+  // Tenta cache localStorage primeiro (offline-friendly)
+  try {
+    const raw = localStorage.getItem('gf_feriados_'+ano);
+    if(raw){ const arr=JSON.parse(raw); FERIADOS_CACHE[ano]=new Set(arr); return FERIADOS_CACHE[ano]; }
+  } catch(e){}
+  try {
+    const r = await fetch('https://brasilapi.com.br/api/feriados/v1/'+ano, {cache:'force-cache'});
+    if(!r.ok) throw new Error('api');
+    const data = await r.json();
+    const arr = (data||[]).map(d=>d.date);
+    FERIADOS_CACHE[ano] = new Set(arr);
+    try { localStorage.setItem('gf_feriados_'+ano, JSON.stringify(arr)); } catch(e){}
+    return FERIADOS_CACHE[ano];
+  } catch(e) {
+    FERIADOS_CACHE[ano] = new Set();
+    return FERIADOS_CACHE[ano];
+  }
+}
+function getFeriadosCustom(){
+  try { const raw = localStorage.getItem('gf_feriados_custom'); if(raw) return JSON.parse(raw); } catch(e){}
+  return [];
+}
+function setFeriadosCustom(list){
+  try { localStorage.setItem('gf_feriados_custom', JSON.stringify(list)); } catch(e){}
+}
+async function buildFeriadosSet(anos){
+  const set = new Set();
+  for(const y of anos){
+    const s = await getFeriadosNacionais(y);
+    s.forEach(d=>set.add(d));
+  }
+  getFeriadosCustom().forEach(f => set.add(f.data));
+  return set;
+}
+
+async function gerarVencimentos(dataInicio, frequencia, nParcelas, opts) {
+  opts = Object.assign({considerarSabado:true, considerarDomingo:true, considerarFeriado:true}, opts||{});
+  // Pré-carrega feriados dos anos envolvidos
+  let feriadosSet = new Set();
+  if(!opts.considerarFeriado){
+    const startYear = parseInt(dataInicio.slice(0,4),10);
+    // Estima último ano com folga
+    const maxMs = {diario:1,semanal:7,quinzenal:15,mensal:31}[frequencia]||31;
+    const endDate = new Date(new Date(dataInicio+'T00:00:00').getTime() + maxMs*nParcelas*86400000 + 365*86400000);
+    const endYear = endDate.getFullYear();
+    const anos = [];
+    for(let y=startYear; y<=endYear; y++) anos.push(y);
+    feriadosSet = await buildFeriadosSet(anos);
+  }
+  const ini = new Date(dataInicio+'T00:00:00');
   const vencimentos = [];
   for (let i = 1; i <= nParcelas; i++) {
     const d = new Date(ini);
-    if (frequencia === 'diario') {
-      d.setDate(d.getDate() + i);
-    } else if (frequencia === 'semanal') {
-      d.setDate(d.getDate() + (7 * i));
-    } else if (frequencia === 'quinzenal') {
-      d.setDate(d.getDate() + (15 * i));
-    } else { // mensal
-      d.setMonth(d.getMonth() + i);
+    if (frequencia === 'diario') d.setDate(d.getDate() + i);
+    else if (frequencia === 'semanal') d.setDate(d.getDate() + (7 * i));
+    else if (frequencia === 'quinzenal') d.setDate(d.getDate() + (15 * i));
+    else d.setMonth(d.getMonth() + i); // mensal
+    // Desloca para próximo dia útil conforme opts
+    for(let j=0; j<60; j++){
+      const ds = d.toISOString().slice(0,10);
+      const dow = d.getDay(); // 0=Dom, 6=Sab
+      if(!opts.considerarSabado && dow===6){ d.setDate(d.getDate()+1); continue; }
+      if(!opts.considerarDomingo && dow===0){ d.setDate(d.getDate()+1); continue; }
+      if(!opts.considerarFeriado && feriadosSet.has(ds)){ d.setDate(d.getDate()+1); continue; }
+      break;
     }
-    vencimentos.push(d.toISOString().split('T')[0]);
+    vencimentos.push(d.toISOString().slice(0,10));
   }
   return vencimentos;
+}
+
+// Ajusta uma única data para o próximo dia útil (usado em parcela única e troca cheques)
+async function ajustarDiaUtil(dataStr, opts){
+  opts = Object.assign({considerarSabado:true, considerarDomingo:true, considerarFeriado:true}, opts||{});
+  if(opts.considerarSabado && opts.considerarDomingo && opts.considerarFeriado) return dataStr;
+  const ano = parseInt(dataStr.slice(0,4),10);
+  const feriadosSet = !opts.considerarFeriado ? await buildFeriadosSet([ano, ano+1]) : new Set();
+  const d = new Date(dataStr+'T00:00:00');
+  for(let j=0; j<60; j++){
+    const ds = d.toISOString().slice(0,10);
+    const dow = d.getDay();
+    if(!opts.considerarSabado && dow===6){ d.setDate(d.getDate()+1); continue; }
+    if(!opts.considerarDomingo && dow===0){ d.setDate(d.getDate()+1); continue; }
+    if(!opts.considerarFeriado && feriadosSet.has(ds)){ d.setDate(d.getDate()+1); continue; }
+    return ds;
+  }
+  return dataStr;
+}
+
+function readDiaUtilOpts(){
+  const s=document.getElementById('cfg-considerar-sabado');
+  const d=document.getElementById('cfg-considerar-domingo');
+  const f=document.getElementById('cfg-considerar-feriado');
+  return {
+    considerarSabado: s ? s.checked : true,
+    considerarDomingo: d ? d.checked : true,
+    considerarFeriado: f ? f.checked : true
+  };
+}
+
+// ===== UI: FERIADOS CUSTOMIZADOS =====
+function renderFeriadosCustomList(){
+  const box = document.getElementById('cfg-feriados-list');
+  if(!box) return;
+  const list = getFeriadosCustom();
+  if(!list.length){
+    box.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px 0;">Nenhum feriado customizado</p>';
+    return;
+  }
+  list.sort((a,b)=>a.data.localeCompare(b.data));
+  box.innerHTML = list.map((f,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid var(--border);">
+      <div>
+        <strong style="font-size:0.82rem;">${fmtData(f.data)}</strong>
+        <span style="color:var(--text-secondary);font-size:0.78rem;margin-left:8px;">${esc(f.nome||'(sem descrição)')}</span>
+        ${f.cidade?`<span style="color:var(--text-muted);font-size:0.72rem;margin-left:6px;">· ${esc(f.cidade)}${f.uf?'-'+esc(f.uf):''}</span>`:''}
+      </div>
+      <button class="btn-icon" onclick="removeFeriadoCustom(${i})" title="Remover">&times;</button>
+    </div>
+  `).join('');
+}
+function addFeriadoCustom(){
+  const data = document.getElementById('cfg-feriado-data').value;
+  const nome = document.getElementById('cfg-feriado-desc').value.trim();
+  const cidade = document.getElementById('cfg-cidade').value.trim();
+  const uf = document.getElementById('cfg-uf').value.trim().toUpperCase();
+  if(!data){ toast('Selecione uma data','error'); return; }
+  if(!nome){ toast('Descreva o feriado','error'); return; }
+  const list = getFeriadosCustom();
+  if(list.some(f=>f.data===data)){ toast('Já existe um feriado nessa data','warning'); return; }
+  list.push({data,nome,cidade,uf});
+  setFeriadosCustom(list);
+  document.getElementById('cfg-feriado-data').value='';
+  document.getElementById('cfg-feriado-desc').value='';
+  renderFeriadosCustomList();
+  toast('Feriado adicionado!');
+}
+function removeFeriadoCustom(idx){
+  const list = getFeriadosCustom();
+  list.sort((a,b)=>a.data.localeCompare(b.data));
+  list.splice(idx,1);
+  setFeriadosCustom(list);
+  renderFeriadosCustomList();
+}
+async function sincronizarFeriadosNacionais(){
+  const ano = new Date().getFullYear();
+  // Invalida cache pra forçar rebuscar da API
+  delete FERIADOS_CACHE[ano]; delete FERIADOS_CACHE[ano+1];
+  try { localStorage.removeItem('gf_feriados_'+ano); localStorage.removeItem('gf_feriados_'+(ano+1)); } catch(e){}
+  const s1 = await getFeriadosNacionais(ano);
+  const s2 = await getFeriadosNacionais(ano+1);
+  const info = document.getElementById('cfg-feriados-nacionais');
+  if(info) info.textContent = `${s1.size} feriados em ${ano} / ${s2.size} em ${ano+1} (sincronizados via BrasilAPI)`;
+  toast('Feriados nacionais sincronizados!');
+}
+async function initFeriadosUI(){
+  renderFeriadosCustomList();
+  const ano = new Date().getFullYear();
+  const s1 = await getFeriadosNacionais(ano);
+  const info = document.getElementById('cfg-feriados-nacionais');
+  if(info) info.textContent = `${s1.size} feriados nacionais carregados para ${ano}`;
 }
 
 
@@ -3669,6 +3854,10 @@ function openContratoTipo(tipo) {
     document.getElementById('tc-resumo').style.display='none';
     document.getElementById('tc-pessoa').innerHTML=opts;
   }
+  // Reset dos checkboxes de dia útil
+  ['cfg-considerar-sabado','cfg-considerar-domingo','cfg-considerar-feriado'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.checked=true;
+  });
   // Limpar anexos temporários ao criar novo contrato
   window._anexosTemp=[];
   renderAnexosModal(null);
@@ -3816,10 +4005,10 @@ function previewTrocaCheque() {
   document.getElementById('tc-lucro-val').textContent=moeda(desconto);
   document.getElementById('tc-resumo').style.display='block';
 }
-function previewParcelas() {
+async function previewParcelas() {
   const v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipo=document.getElementById('emp-tipo-juros').value;
   if(!v||!t||!n||!ini){toast('Preencha os campos','error');return;}
-  const c=calcParcelas(v,t,n,tipo,freq),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipo,freq),vs=await gerarVencimentos(ini,freq,n,readDiaUtilOpts());
   document.getElementById('emp-preview-table').innerHTML=c.map((p,i)=>`<tr><td>${p.numero}</td><td>${fmtData(vs[i])}</td><td>${moeda(p.amortizacao)}</td><td>${moeda(p.juros)}</td><td>${moeda(p.parcela)}</td><td>${moeda(p.saldo)}</td></tr>`).join('');
   document.getElementById('emp-preview-total').innerHTML=`Juros: <strong>${moeda(c.reduce((s,p)=>s+p.juros,0))}</strong> | Total: <strong>${moeda(c.reduce((s,p)=>s+p.parcela,0))}</strong>`;
   document.getElementById('emp-preview').style.display='block';
@@ -3865,11 +4054,12 @@ async function salvarContrato() {
     const disponivel=Number(cliente.limiteCredito)-totalUtilizado;
     if(v>disponivel){toast(`Limite de crédito excedido! Disponível: ${moeda(Math.max(0,disponivel))}`,'error');return;}
   }
+  const diaUtilOpts = readDiaUtilOpts();
   const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null};
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
   const insertedEmp = await dbInsert('emprestimos',empRecord);
   const actualEid = insertedEmp.id || eid;
-  const c=calcParcelas(v,t,n,tipoJuros,freq),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,tipoJuros,freq),vs=await gerarVencimentos(ini,freq,n,diaUtilOpts);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   // Salvar anexos temporários
@@ -3906,9 +4096,11 @@ async function salvarParcelaUnica(cl) {
   if(!pid||!v||!t||!dias||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
   const juros=v*(t/100);const total=v+juros;
-  const venc=new Date(ini);venc.setDate(venc.getDate()+dias);const vencStr=venc.toISOString().split('T')[0];
+  const venc=new Date(ini+'T00:00:00');venc.setDate(venc.getDate()+dias);let vencStr=venc.toISOString().split('T')[0];
+  const diaUtilOpts=readDiaUtilOpts();
+  vencStr=await ajustarDiaUtil(vencStr,diaUtilOpts);
   const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'simples',sistema:'parcela-unica',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('pu-obs').value.trim()||'')+` [Parcela única - ${dias} dias]`,criadoEm:today(),renegociadoDe:null};
+  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:'simples',sistema:'parcela-unica',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('pu-obs').value.trim()||'')+` [Parcela única - ${dias} dias]`,criadoEm:today(),renegociadoDe:null,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
   const insertedEmp=await dbInsert('emprestimos',empRecord);
   const actualEid=insertedEmp.id||eid;
   await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:v,valorJuros:juros,valorTotal:total,dataVencimento:vencStr,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
@@ -3925,13 +4117,15 @@ async function salvarTrocaCheques(cl) {
   if(!pid||!vCheque||!t||!bomPara||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
   const cliente=cl.find(x=>x.id===pid);
   const desconto=vCheque*(t/100);const entregue=vCheque-desconto;
+  const diaUtilOpts=readDiaUtilOpts();
+  const bomParaAjustado=await ajustarDiaUtil(bomPara,diaUtilOpts);
   // Criar contrato (valor = entregue ao cliente, lucro = desconto)
   const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:entregue,taxaJuros:t,tipoJuros:'simples',sistema:'troca-cheques',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('tc-obs').value.trim()||'')+` [Troca cheque R$${vCheque.toFixed(2)} - Desc. ${t}%]`,criadoEm:today(),renegociadoDe:null};
+  const empRecord={id:eid,pessoaId:pid,valor:entregue,taxaJuros:t,tipoJuros:'simples',sistema:'troca-cheques',numParcelas:1,dataInicio:ini,frequencia:'unica',status:'ativo',obs:(document.getElementById('tc-obs').value.trim()||'')+` [Troca cheque R$${vCheque.toFixed(2)} - Desc. ${t}%]`,criadoEm:today(),renegociadoDe:null,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
   const insertedEmp=await dbInsert('emprestimos',empRecord);
   const actualEid=insertedEmp.id||eid;
   // Parcela = valor total do cheque no vencimento
-  await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:entregue,valorJuros:desconto,valorTotal:vCheque,dataVencimento:bomPara,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
+  await dbInsert('parcelas',{id:genId(),emprestimoId:actualEid,numero:1,valorPrincipal:entregue,valorJuros:desconto,valorTotal:vCheque,dataVencimento:bomParaAjustado,status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0});
   // Registrar cheque na aba cheques (vinculado ao cliente)
   const numCheque=document.getElementById('tc-num-cheque').value.trim()||'S/N';
   await dbInsert('cheques',{id:genId(),clienteId:pid,contratoId:actualEid,numero:numCheque,banco:document.getElementById('tc-banco').value.trim(),agencia:document.getElementById('tc-agencia').value.trim(),valor:vCheque,emissao:ini,bomPara:bomPara,status:'pendente',obs:`Troca de cheque`,criadoEm:today()});
@@ -4321,10 +4515,12 @@ async function salvarRenegociacao() {
   await dbUpdate('emprestimos',oid,{status:'renegociado'});
   const nid=genId();
   const renTipo=document.getElementById('reneg-tipo-juros')?.value||'simples';
-  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:renTipo,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid};
+  // Herda preferências de dia útil do contrato antigo (ou default)
+  const diaUtilOpts={considerarSabado:oe.considerarSabado!==false,considerarDomingo:oe.considerarDomingo!==false,considerarFeriado:oe.considerarFeriado!==false};
+  const newEmp={id:nid,pessoaId:oe.pessoaId,valor:v,taxaJuros:t,tipoJuros:renTipo,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:(document.getElementById('reneg-obs').value.trim()||'')+` [Reneg. de ${oid}]`,criadoEm:today(),renegociadoDe:oid,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
   const insertedEmp=await dbInsert('emprestimos',newEmp);
   const actualNid=insertedEmp.id||nid;
-  const c=calcParcelas(v,t,n,renTipo,freq),vs=gerarVencimentos(ini,freq,n);
+  const c=calcParcelas(v,t,n,renTipo,freq),vs=await gerarVencimentos(ini,freq,n,diaUtilOpts);
   const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualNid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
   await dbBulkInsert('parcelas',parcRecords);
   closeModal('modal-renegociar');toast('Renegociado!');verContrato(actualNid);
@@ -4612,6 +4808,8 @@ async function renderConfig(){
   const [c,cli,emps,pags,chqs]=await Promise.all([getConfig(),dbSelect('clientes'),dbSelect('emprestimos'),dbSelect('pagamentos'),dbSelect('cheques')]);
   document.getElementById('cfg-mora').value=c.jurosMoraPadrao||0.033;
   document.getElementById('cfg-moeda').value=c.moeda||'BRL';
+  // Seção de feriados (sem bloquear o render)
+  initFeriadosUI().catch(e=>console.warn('Feriados UI init:',e));
   document.getElementById('cfg-c-cli').textContent=cli.length;
   document.getElementById('cfg-c-emp').textContent=emps.length;
   document.getElementById('cfg-c-pag').textContent=pags.length;
