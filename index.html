@@ -97,7 +97,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 table { width: 100%; border-collapse: collapse; }
 
 /* SIDEBAR */
-.sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); border-right: none; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); }
+.sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); border-right: none; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); padding-top: env(safe-area-inset-top, 0); padding-left: env(safe-area-inset-left, 0); padding-bottom: env(safe-area-inset-bottom, 0); }
 .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.15); text-align: center; }
 .sidebar-header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; -webkit-text-fill-color: #fff; }
 .sidebar-header small { color: var(--sidebar-text-muted); font-size: 0.75rem; }
@@ -346,7 +346,7 @@ table td { font-size: 0.85rem; }
   /* mobile-home follows .page active/inactive like all other pages */
   .mobile-home .mobile-header {
     background: var(--sidebar-bg);
-    padding: 24px 20px 20px;
+    padding: calc(24px + env(safe-area-inset-top, 0)) 20px 20px;
     border-radius: 0 0 24px 24px;
     color: #fff;
     margin-bottom: 20px;
@@ -439,7 +439,7 @@ table td { font-size: 0.85rem; }
     position: sticky; top: 0; z-index: 50;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
+    padding: calc(12px + env(safe-area-inset-top, 0)) 16px 12px;
     align-items: center;
     gap: 12px;
     backdrop-filter: blur(10px);
@@ -548,8 +548,17 @@ table td { font-size: 0.85rem; }
   }
   .mobile-detail-actions .btn { flex: 1; justify-content: center; border-radius: 10px; min-height: 40px; }
 }
+/* iOS PWA standalone: safe-area em elementos que podem nao ter header */
+@media (display-mode: standalone) {
+  .notif-dropdown { top: calc(70px + env(safe-area-inset-top, 0)); }
+}
 @media (max-width: 768px) and (display-mode: standalone) {
-  .mobile-home .mobile-header { padding-top: 48px; }
+  /* Mobile PWA: garantir que qualquer tela sem header mobile tenha respiro do topo */
+  .page:not(.mobile-home) > .page-header { padding-top: calc(8px + env(safe-area-inset-top, 0)); }
+  .page > .page-header:first-child { padding-top: calc(8px + env(safe-area-inset-top, 0)); }
+  .notif-dropdown { top: calc(60px + env(safe-area-inset-top, 0)); }
+  /* Padding bottom para evitar cortes na barra home do iPhone */
+  body, #app-container { padding-bottom: env(safe-area-inset-bottom, 0); }
 }
 @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
 /* Hide mobile elements on desktop */
@@ -610,6 +619,8 @@ table td { font-size: 0.85rem; }
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 40px; height: 70px;
+  padding-top: env(safe-area-inset-top, 0);
+  box-sizing: content-box;
   background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0,0,0,0.06);
   transition: all 0.3s ease;
@@ -797,11 +808,11 @@ table td { font-size: 0.85rem; }
 /* Landing page responsive */
 @media (max-width: 768px) {
   #landing-page { display: block; }
-  .lp-header { padding: 0 16px; height: 60px; }
+  .lp-header { padding: 0 16px; height: 60px; padding-top: env(safe-area-inset-top, 0); }
   .lp-nav { display: none; }
   .lp-hero h1 { font-size: 2rem; }
   .lp-hero p { font-size: 1rem; }
-  .lp-hero { padding: 100px 20px 60px; min-height: auto; }
+  .lp-hero { padding: calc(100px + env(safe-area-inset-top, 0)) 20px 60px; min-height: auto; }
   .lp-features-grid { grid-template-columns: 1fr; gap: 16px; }
   .lp-about-grid { grid-template-columns: 1fr; gap: 30px; }
   .lp-pricing-grid { grid-template-columns: 1fr; gap: 16px; }
@@ -828,7 +839,7 @@ table td { font-size: 0.85rem; }
 .modal-anexo-view .anexo-close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 210; }
 
 /* NOTIFICATION BELL - Desktop (fixed top-right) */
-.notif-bell-desktop { position: fixed; top: 20px; right: 20px; z-index: 150; width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: transform var(--transition); }
+.notif-bell-desktop { position: fixed; top: calc(20px + env(safe-area-inset-top, 0)); right: calc(20px + env(safe-area-inset-right, 0)); z-index: 150; width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: transform var(--transition); }
 .notif-bell-desktop:hover { transform: scale(1.05); }
 .notif-bell-desktop svg { width: 20px; height: 20px; }
 .notif-bell-desktop .notif-badge { position: absolute; top: -2px; right: -2px; background: var(--danger); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 10px; padding: 0 5px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); }
@@ -840,7 +851,7 @@ table td { font-size: 0.85rem; }
 .notif-bell-mobile .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--danger); color: #fff; font-size: 0.55rem; font-weight: 700; min-width: 14px; height: 14px; border-radius: 8px; padding: 0 3px; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.2); }
 
 /* NOTIFICATION DROPDOWN */
-.notif-dropdown { position: fixed; top: 70px; right: 20px; width: 340px; max-height: 70vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 210; display: none; }
+.notif-dropdown { position: fixed; top: calc(70px + env(safe-area-inset-top, 0)); right: calc(20px + env(safe-area-inset-right, 0)); width: 340px; max-height: 70vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 210; display: none; }
 .notif-dropdown.active { display: block; }
 .notif-dropdown .notif-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .notif-dropdown .notif-header h4 { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
