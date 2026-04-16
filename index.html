@@ -1292,6 +1292,25 @@ table td { font-size: 0.85rem; }
   <p style="color:var(--text-secondary);font-size:0.9rem;">Carregando seus dados...</p>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- Biometric Lock Screen -->
+<div id="biometric-lock" style="display:none;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#1b5e20 0%,#2e7d32 50%,#43a047 100%);align-items:center;justify-content:center;flex-direction:column;gap:24px;padding:24px;padding-top:calc(24px + env(safe-area-inset-top,0px));">
+  <div style="display:flex;align-items:center;gap:12px;color:#fff;">
+    <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 12l5-5 5 5M7 17l5-5 5 5"/></svg>
+    <h1 style="font-size:1.6rem;font-weight:800;margin:0;">GestFin</h1>
+  </div>
+  <div id="biometric-icon-wrap" style="width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(8px);">
+    <svg id="biometric-icon" width="60" height="60" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 11c0-3 1-4 1-6a3 3 0 0 0-6 0c0 2 1 3 1 6"/><path d="M7 22c-1-3-1-6-1-9"/><path d="M17 22c1-3 1-6 1-9"/><path d="M10 18c0 1.1 0 2.2-.5 3"/><path d="M14 18c0 1.1 0 2.2.5 3"/><path d="M12 12c1.5 0 2.5 1.5 2.5 3"/></svg>
+  </div>
+  <div style="text-align:center;color:#fff;">
+    <p id="biometric-status" style="font-size:1rem;font-weight:600;margin-bottom:4px;">Toque para desbloquear</p>
+    <p id="biometric-sub" style="font-size:0.8rem;opacity:0.8;">Use Face ID, Touch ID ou digital</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px;">
+    <button onclick="biometricUnlock()" id="biometric-unlock-btn" style="background:#fff;color:#2e7d32;border:none;padding:14px;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;">🔓 Desbloquear</button>
+    <button onclick="biometricLogout()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);padding:12px;border-radius:10px;font-weight:500;font-size:0.85rem;cursor:pointer;">Sair da conta</button>
+  </div>
+</div>
 <div id="app-container" style="display:none;">
 
 <button class="mobile-toggle" onclick="toggleSidebar()">
@@ -1780,6 +1799,27 @@ table td { font-size: 0.85rem; }
     </div>
     <button class="btn btn-primary" onclick="salvarMensagens()">Salvar Mensagens</button>
     <button class="btn btn-ghost" onclick="resetarMensagens()" style="margin-left:8px;">Restaurar Padrão</button>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Segurança</h3></div>
+    <div id="biometric-unsupported" style="display:none;background:rgba(249,168,37,0.12);border-left:3px solid var(--warning);padding:10px 12px;border-radius:6px;color:var(--text-secondary);font-size:0.82rem;margin-bottom:10px;">
+      Seu dispositivo ou navegador não suporta biometria. No iPhone use "Adicionar à Tela Inicial" no Safari; no Android use o APK gerado.
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <strong style="font-size:0.92rem;">Bloquear com biometria</strong>
+        <p style="font-size:0.78rem;color:var(--text-secondary);margin-top:3px;">Face ID, Touch ID ou digital ao abrir o app.</p>
+      </div>
+      <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;">
+        <input type="checkbox" id="cfg-biometric" onchange="toggleBiometric(this.checked)" style="opacity:0;width:0;height:0;">
+        <span style="position:absolute;inset:0;background:var(--border);border-radius:26px;cursor:pointer;transition:0.3s;"></span>
+        <span id="biometric-slider-dot" style="position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+      </label>
+    </div>
+    <style>
+      #cfg-biometric:checked ~ span:first-of-type { background: var(--accent) !important; }
+      #cfg-biometric:checked ~ #biometric-slider-dot { transform: translateX(22px); }
+    </style>
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="card-header"><h3>Feriados & Dias Úteis</h3></div>
@@ -3271,6 +3311,178 @@ function updateMobileThemeIcon() {
   const labels = { light: 'Modo Escuro', dark: 'Modo Roxo', purple: 'Modo Claro' };
   const label = document.getElementById('theme-label');
   if (label) label.textContent = labels[theme] || 'Modo Escuro';
+}
+
+// ===== BIOMETRIC LOCK (WebAuthn) =====
+// Usa WebAuthn como trava local. Não substitui auth do Supabase —
+// apenas gateia a UI após a sessão já estar restaurada.
+function isBiometricSupported(){
+  return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create);
+}
+async function isPlatformAuthenticatorAvailable(){
+  if(!isBiometricSupported()) return false;
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch(e){ return false; }
+}
+function _b64uToBuf(b64u){
+  const b64 = b64u.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((b64u.length+3)%4);
+  return Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+}
+function _bufToB64u(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+async function biometricEnroll(){
+  if(!await isPlatformAuthenticatorAvailable()){
+    toast('Seu dispositivo não tem biometria disponível','error');
+    return false;
+  }
+  const userEmail = (currentUser && currentUser.email) || 'gestfin-user';
+  const userName = (currentProfile && currentProfile.nome) || userEmail;
+  const userId = new TextEncoder().encode(currentUser?.id || userEmail);
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  try {
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'GestFin', id: window.location.hostname },
+        user: { id: userId, name: userEmail, displayName: userName },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },   // ES256
+          { alg: -257, type: 'public-key' }, // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',  // Face ID / Touch ID / digital
+          userVerification: 'required',
+          residentKey: 'preferred'
+        },
+        timeout: 60000,
+        attestation: 'none'
+      }
+    });
+    if(!cred) return false;
+    const credIdB64 = _bufToB64u(cred.rawId);
+    localStorage.setItem('gf_biometric_cred', credIdB64);
+    localStorage.setItem('gf_biometric_enabled', '1');
+    localStorage.setItem('gf_biometric_user', currentUser?.id || '');
+    return true;
+  } catch(e) {
+    console.error('WebAuthn enroll error:', e);
+    toast('Não foi possível ativar a biometria: ' + (e.message||e.name||'erro'), 'error');
+    return false;
+  }
+}
+async function biometricAssert(){
+  const credIdB64 = localStorage.getItem('gf_biometric_cred');
+  if(!credIdB64) return false;
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  try {
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: _b64uToBuf(credIdB64), type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return !!assertion;
+  } catch(e) {
+    console.warn('WebAuthn assertion failed:', e);
+    return false;
+  }
+}
+async function toggleBiometric(enable){
+  if(enable){
+    const ok = await biometricEnroll();
+    if(!ok){
+      document.getElementById('cfg-biometric').checked = false;
+      return;
+    }
+    toast('Biometria ativada! Será solicitada ao abrir o app.');
+  } else {
+    localStorage.removeItem('gf_biometric_cred');
+    localStorage.removeItem('gf_biometric_enabled');
+    localStorage.removeItem('gf_biometric_user');
+    toast('Biometria desativada');
+  }
+}
+function isBiometricEnabled(){
+  return localStorage.getItem('gf_biometric_enabled') === '1'
+    && !!localStorage.getItem('gf_biometric_cred');
+}
+function showBiometricLock(){
+  const lock = document.getElementById('biometric-lock');
+  if(lock){ lock.style.display = 'flex'; }
+  // Esconde o resto do app enquanto travado
+  const app = document.getElementById('app-container');
+  if(app) app.style.display = 'none';
+}
+function hideBiometricLock(){
+  const lock = document.getElementById('biometric-lock');
+  if(lock) lock.style.display = 'none';
+}
+async function biometricUnlock(){
+  const status = document.getElementById('biometric-status');
+  const sub = document.getElementById('biometric-sub');
+  const btn = document.getElementById('biometric-unlock-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Aguardando...'; }
+  if(status) status.textContent = 'Autentique-se...';
+  const ok = await biometricAssert();
+  if(ok){
+    if(status) status.textContent = '✓ Desbloqueado';
+    hideBiometricLock();
+    const app = document.getElementById('app-container');
+    if(app) app.style.display = '';
+  } else {
+    if(status) status.textContent = 'Falha ao desbloquear';
+    if(sub) sub.textContent = 'Tente novamente ou saia da conta';
+    if(btn){ btn.disabled = false; btn.textContent = '🔓 Tentar novamente'; }
+  }
+}
+async function biometricLogout(){
+  // Limpa dados biométricos e faz logout
+  localStorage.removeItem('gf_biometric_cred');
+  localStorage.removeItem('gf_biometric_enabled');
+  localStorage.removeItem('gf_biometric_user');
+  hideBiometricLock();
+  try { await supabaseClient.auth.signOut(); } catch(e){}
+  location.reload();
+}
+async function maybeRequireBiometric(){
+  // Chamado no boot, ANTES de mostrar o app
+  if(!isBiometricEnabled()) return true;
+  if(!isBiometricSupported()){
+    // Disp. não suporta mais — desativa silenciosamente
+    localStorage.removeItem('gf_biometric_enabled');
+    return true;
+  }
+  // Garante que o user que está logado é o mesmo que cadastrou biometria
+  const savedUserId = localStorage.getItem('gf_biometric_user');
+  if(savedUserId && currentUser && savedUserId !== currentUser.id){
+    // User diferente fez login — limpa biometria anterior
+    localStorage.removeItem('gf_biometric_cred');
+    localStorage.removeItem('gf_biometric_enabled');
+    localStorage.removeItem('gf_biometric_user');
+    return true;
+  }
+  showBiometricLock();
+  // Auto-trigger do prompt após pequeno delay (melhor UX mobile)
+  setTimeout(()=>biometricUnlock(), 400);
+  return false;
+}
+async function initBiometricUI(){
+  const toggle = document.getElementById('cfg-biometric');
+  const notice = document.getElementById('biometric-unsupported');
+  if(!toggle) return;
+  const supported = await isPlatformAuthenticatorAvailable();
+  if(!supported){
+    toggle.disabled = true;
+    if(notice) notice.style.display = 'block';
+  } else {
+    if(notice) notice.style.display = 'none';
+  }
+  toggle.checked = isBiometricEnabled();
 }
 
 // MOBILE NAVIGATION
@@ -4810,6 +5022,8 @@ async function renderConfig(){
   document.getElementById('cfg-moeda').value=c.moeda||'BRL';
   // Seção de feriados (sem bloquear o render)
   initFeriadosUI().catch(e=>console.warn('Feriados UI init:',e));
+  // Seção de segurança / biometria
+  initBiometricUI().catch(e=>console.warn('Biometric UI init:',e));
   document.getElementById('cfg-c-cli').textContent=cli.length;
   document.getElementById('cfg-c-emp').textContent=emps.length;
   document.getElementById('cfg-c-pag').textContent=pags.length;
@@ -5233,9 +5447,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         dbSelect('pagamentos').catch(e => console.error('Pagamentos error:', e))
       ]);
     } catch(e) { console.error('Boot error:', e); }
-    // Hide loading, show app with data ready
+    // Hide loading
     loadingEl.style.display = 'none';
-    showApp();
+    // Biometric lock (se habilitado) — mostra tela de lock e interrompe fluxo até desbloquear
+    const unlocked = await maybeRequireBiometric();
+    if(!unlocked){
+      // Tela de lock está visível; render ocorre só depois do desbloqueio via biometricUnlock()
+      // Por isso já preparamos o app pra aparecer ao desbloquear:
+      showApp();
+      document.getElementById('app-container').style.display = 'none';
+      // Continua o resto do boot em background (dashboard/calendar/notificações)
+    } else {
+      showApp();
+    }
     initCalendar();
     updateSidebarUser();
     updateSidebarPlan();
