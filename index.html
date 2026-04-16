@@ -4127,6 +4127,14 @@ async function editarContrato() {
     document.getElementById('emp-preview').style.display='none';
   }
 
+  // Carregar flags de dia útil salvas no contrato (default true)
+  const cs=document.getElementById('cfg-considerar-sabado');
+  const cd=document.getElementById('cfg-considerar-domingo');
+  const cf=document.getElementById('cfg-considerar-feriado');
+  if(cs) cs.checked = e.considerarSabado !== false;
+  if(cd) cd.checked = e.considerarDomingo !== false;
+  if(cf) cf.checked = e.considerarFeriado !== false;
+
   // Carregar anexos existentes
   window._anexosTemp=[];
   renderAnexosModal(eid);
@@ -4297,8 +4305,65 @@ async function salvarEdicaoContrato(eid,tipoContrato){
     upd.taxaJuros=parseFloat(document.getElementById('emp-taxa').value);
     upd.tipoJuros=document.getElementById('emp-tipo-juros').value;
   }
+
+  // === FLAGS DE DIA ÚTIL ===
+  // Se mudaram, pergunta se quer recalcular parcelas pendentes futuras
+  const es = await dbSelect('emprestimos');
+  const contratoAtual = es.find(x=>x.id===eid) || {};
+  const antigos = {
+    considerarSabado: contratoAtual.considerarSabado !== false,
+    considerarDomingo: contratoAtual.considerarDomingo !== false,
+    considerarFeriado: contratoAtual.considerarFeriado !== false
+  };
+  const novos = readDiaUtilOpts();
+  const flagsMudaram =
+    novos.considerarSabado !== antigos.considerarSabado ||
+    novos.considerarDomingo !== antigos.considerarDomingo ||
+    novos.considerarFeriado !== antigos.considerarFeriado;
+
+  let recalcularParcelas = false;
+  if (flagsMudaram) {
+    recalcularParcelas = await showConfirm(
+      'As preferências de dia útil foram alteradas.\n\n'+
+      'Deseja recalcular as parcelas AINDA NÃO PAGAS (com vencimento a partir de hoje) para o próximo dia útil?\n\n'+
+      '• Parcelas já quitadas NÃO serão afetadas.\n'+
+      '• Parcelas vencidas no passado NÃO serão afetadas.\n\n'+
+      'Clicar em Cancelar salva apenas a preferência, sem mexer nas datas.'
+    );
+    // Salva as flags no contrato independentemente da resposta
+    upd.considerarSabado = novos.considerarSabado;
+    upd.considerarDomingo = novos.considerarDomingo;
+    upd.considerarFeriado = novos.considerarFeriado;
+  }
+
   await dbUpdate('emprestimos',eid,upd);
-  closeModal('modal-contrato');toast('Contrato atualizado!');
+
+  // Recalcula parcelas pendentes com vencimento futuro
+  let parcelasAjustadas = 0;
+  if (recalcularParcelas) {
+    const h = today();
+    const ps = await dbSelect('parcelas');
+    const pendentes = ps.filter(p =>
+      p.emprestimoId === eid &&
+      p.status === 'pendente' &&
+      p.dataVencimento >= h
+    );
+    for (const p of pendentes) {
+      const novaData = await ajustarDiaUtil(p.dataVencimento, novos);
+      if (novaData !== p.dataVencimento) {
+        await dbUpdate('parcelas', p.id, { dataVencimento: novaData });
+        parcelasAjustadas++;
+      }
+    }
+    invalidateCache('parcelas');
+  }
+
+  closeModal('modal-contrato');
+  if (recalcularParcelas) {
+    toast(`Contrato atualizado! ${parcelasAjustadas} parcela(s) deslocada(s) para próximo dia útil.`);
+  } else {
+    toast('Contrato atualizado!');
+  }
   invalidateCache('emprestimos');
   verContrato(eid);
 }
