@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2e7d32">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>GestFin - Gestão de Empréstimos Pessoais</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4776,6 +4779,10 @@ async function renderCalendarEvents(events) {
 // INIT
 // ================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  // Registra service worker (PWA)
+  if('serviceWorker' in navigator){
+    try{await navigator.serviceWorker.register('/sw.js');}catch(e){console.warn('SW error:',e);}
+  }
   // Migrate old data if exists
   const oldCl=localStorage.getItem('gestfin_pessoas');
   if(oldCl&&!localStorage.getItem('gf_clientes')){
