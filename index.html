@@ -1997,9 +1997,9 @@ table td { font-size: 0.85rem; }
   <div class="modal" style="max-width:400px;">
     <div class="modal-header"><h3>Tipo de Contrato</h3><button class="btn-icon" onclick="closeModal('modal-tipo-contrato')">&times;</button></div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
-      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('comum')">Contrato Comum</button>
-      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('parcela-unica')">Parcela Única para X dias</button>
-      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="closeModal('modal-tipo-contrato');openContratoTipo('troca-cheques')">Troca de Cheques</button>
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="openContratoTipo('comum')">Contrato Comum</button>
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="openContratoTipo('parcela-unica')">Parcela Única para X dias</button>
+      <button class="btn btn-primary" style="padding:14px;font-size:1rem;" onclick="openContratoTipo('troca-cheques')">Troca de Cheques</button>
     </div>
   </div>
 </div>
@@ -3549,19 +3549,13 @@ async function renderMobileCalendar() {
 }
 function openModal(id) {
   const el=document.getElementById(id);
-  if(!el){console.warn('[openModal] elemento não encontrado:',id);return;}
+  if(!el)return;
   const wasActive=el.classList.contains('active');
   el.classList.add('active');
-  console.log('[openModal]',id,'active=',el.classList.contains('active'),'display=',getComputedStyle(el).display,'visibility=',getComputedStyle(el).visibility,'zIndex=',getComputedStyle(el).zIndex);
   // Push state pra permitir fechar com swipe back (apenas se app inicializou history)
   if(!wasActive&&!window._ignoreModalState&&window._historyInitialized){
     try{history.pushState({_gf:true,type:'modal',id:id},'');}catch(e){}
   }
-  // Verifica após 200ms se ainda está ativo
-  setTimeout(()=>{
-    const still=el.classList.contains('active');
-    console.log('[openModal+200ms]',id,'still active=',still,'display=',getComputedStyle(el).display);
-  },200);
 }
 function closeModal(id) {
   const el=document.getElementById(id);
@@ -3924,23 +3918,22 @@ async function renderCobradores() {
 // CONTRATOS (EMPRÉSTIMOS)
 // ================================================
 async function openContratoModal() {
-  console.log('[openContratoModal] start');
   let cl = await dbSelect('clientes');
-  console.log('[openContratoModal] clientes:', cl?.length);
   // Se cache veio vazio mas há fetch em voo, aguarda a rede antes de desistir
   if ((!cl || !cl.length) && CACHE_LOADING && CACHE_LOADING['clientes']) {
-    console.log('[openContratoModal] aguardando rede...');
     try { cl = await CACHE_LOADING['clientes']; } catch(e){}
-    console.log('[openContratoModal] pós-rede:', cl?.length);
   }
   if(!cl || !cl.length){ toast('Cadastre um cliente primeiro','warning'); return; }
-  // Guardar clientes pra uso nos sub-formulários
   window._contratoClientes = cl;
-  console.log('[openContratoModal] abrindo modal-tipo-contrato');
   openModal('modal-tipo-contrato');
 }
 
 function openContratoTipo(tipo) {
+  // Fecha o modal de seleção visualmente SEM history.back — o pushState
+  // do próximo openModal substitui o estado sem disparar popstate que
+  // fecharia o novo modal recém-aberto.
+  const mt=document.getElementById('modal-tipo-contrato');
+  if(mt) mt.classList.remove('active');
   const cl=window._contratoClientes||[];
   const opts='<option value="">Selecione...</option>'+cl.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
   document.getElementById('emp-tipo-contrato').value=tipo;
