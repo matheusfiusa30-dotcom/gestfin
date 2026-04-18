@@ -2910,23 +2910,39 @@ function debounce(key, fn, delay=300) {
   _debounceTimers[key] = setTimeout(fn, delay);
 }
 
-// Generic async DB operations
+// Generic async DB operations — STALE-WHILE-REVALIDATE
+// 1) Se tem memória fresca (TTL), retorna imediato.
+// 2) Se tem localStorage, retorna imediato e revalida em background.
+// 3) Sem nenhum cache, aguarda rede.
+// Quando a revalidação termina, notifica via window._gfOnDataRefresh(table)
+//    — páginas podem se inscrever pra re-renderizar com dados frescos.
 async function dbSelect(table) {
   if (!isConnected()) return getDBLocal(table);
   const now = Date.now();
-  // Return cache if fresh
+  // 1) Memória fresca
   if (DB_CACHE[table] && CACHE_TS[table] && (now - CACHE_TS[table]) < CACHE_TTL) {
     return DB_CACHE[table];
   }
-  // Prevent duplicate concurrent requests
-  if (CACHE_LOADING[table]) return CACHE_LOADING[table];
-  CACHE_LOADING[table] = (async () => {
+  // Dedup fetch em voo
+  if (CACHE_LOADING[table]) {
+    // Se temos local/memory cache, retorna ele e deixa a promise em voo atualizar
+    if (Array.isArray(DB_CACHE[table])) return DB_CACHE[table];
+    return CACHE_LOADING[table];
+  }
+  // Dispara fetch em background
+  const fetchPromise = (async () => {
     try {
       const { data, error } = await supabaseClient.from(table).select('*');
       if (error) throw error;
       const mapped = (data || []).map(r => toCamel(table, r));
+      const changed = JSON.stringify(DB_CACHE[table]||null) !== JSON.stringify(mapped);
       DB_CACHE[table] = mapped;
       CACHE_TS[table] = Date.now();
+      try { setDBLocal(table, mapped); } catch(e){}
+      // Notifica listeners (ex: re-render da página atual) só se os dados mudaram
+      if (changed && typeof window._gfOnDataRefresh === 'function') {
+        try { window._gfOnDataRefresh(table, mapped); } catch(e){ console.error('onDataRefresh error:', e); }
+      }
       return mapped;
     } catch(e) {
       console.error('DB select error:', table, e);
@@ -2935,7 +2951,17 @@ async function dbSelect(table) {
       delete CACHE_LOADING[table];
     }
   })();
-  return CACHE_LOADING[table];
+  CACHE_LOADING[table] = fetchPromise;
+  // 2) Cache memória "velho" (TTL expirou mas os dados estão ali) → retorna imediato
+  if (Array.isArray(DB_CACHE[table])) return DB_CACHE[table];
+  // 3) Tenta localStorage
+  const local = getDBLocal(table);
+  if (Array.isArray(local) && local.length) {
+    DB_CACHE[table] = local; // popula memória pra evitar nova leitura
+    return local;
+  }
+  // 4) Primeira vez sem nada: aguarda rede
+  return fetchPromise;
 }
 function invalidateCache(table) { delete CACHE_TS[table]; }
 function invalidateAllCache() { CACHE_TS = {}; }
@@ -2953,8 +2979,11 @@ async function dbInsert(table, record) {
     if (currentUser && table !== 'perfis' && table !== 'assinaturas') snake.user_id = currentUser.id;
     const { data, error } = await supabaseClient.from(table).insert(snake).select().single();
     if (error) throw error;
+    const inserted = toCamel(table, data);
+    // Atualiza memória + localStorage sincronamente (evita round-trip extra no render)
+    if (Array.isArray(DB_CACHE[table])) { DB_CACHE[table].push(inserted); try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
     invalidateCache(table);
-    return toCamel(table, data);
+    return inserted;
   } catch(e) { console.error('DB insert error:', e); toast('Erro ao salvar: ' + e.message, 'error'); return record; }
 }
 
@@ -2965,6 +2994,11 @@ async function dbUpdate(table, id, updates) {
     delete snake.id;
     const { error } = await supabaseClient.from(table).update(snake).eq('id', id);
     if (error) throw error;
+    // Atualiza memória + localStorage sem esperar reload
+    if (Array.isArray(DB_CACHE[table])) {
+      const i = DB_CACHE[table].findIndex(x=>x.id===id);
+      if (i>=0) { DB_CACHE[table][i] = {...DB_CACHE[table][i], ...updates}; try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
+    }
     invalidateCache(table);
   } catch(e) { console.error('DB update error:', e); }
 }
@@ -2974,6 +3008,10 @@ async function dbDelete(table, id) {
   try {
     const { error } = await supabaseClient.from(table).delete().eq('id', id);
     if (error) throw error;
+    if (Array.isArray(DB_CACHE[table])) {
+      DB_CACHE[table] = DB_CACHE[table].filter(x=>x.id!==id);
+      try { setDBLocal(table, DB_CACHE[table]); } catch(e){}
+    }
     invalidateCache(table);
   } catch(e) { console.error('DB delete error:', e); }
 }
@@ -5413,6 +5451,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (appBooted) return;
     appBooted = true;
     currentUser = user;
+    // Hook: quando fetch em background atualiza dados, re-renderiza página ativa
+    if(!window._gfOnDataRefresh){
+      let _refreshTimer = null;
+      const _pendingTables = new Set();
+      window._gfOnDataRefresh = function(table){
+        _pendingTables.add(table);
+        clearTimeout(_refreshTimer);
+        _refreshTimer = setTimeout(() => {
+          _pendingTables.clear();
+          const active = document.querySelector('.page.active');
+          if (!active) return;
+          const pid = active.id.replace('page-','');
+          try {
+            if (pid === 'mobile-home' && typeof renderMobileHome === 'function') renderMobileHome();
+            else if (pid === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
+            else if (pid === 'contratos' && typeof renderContratos === 'function') renderContratos();
+            else if (pid === 'clientes' && typeof renderClientes === 'function') renderClientes();
+            else if (pid === 'receber-parcela' && typeof renderReceberParcela === 'function') renderReceberParcela();
+            else if (pid === 'cheques' && typeof renderCheques === 'function') renderCheques();
+            else if (pid === 'despesas' && typeof renderDespesas === 'function') renderDespesas();
+            else if (pid === 'relatorios' && typeof renderRelatorios === 'function') renderRelatorios();
+            else if (pid === 'cobradores' && typeof renderCobradores === 'function') renderCobradores();
+          } catch(e){ console.error('Refresh render error:', e); }
+        }, 200);
+      };
+    }
     // Show loading screen immediately
     document.getElementById('landing-page').style.display = 'none';
     const loadingEl = document.getElementById('app-loading');
