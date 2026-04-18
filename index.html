@@ -2980,9 +2980,12 @@ async function dbInsert(table, record) {
     const { data, error } = await supabaseClient.from(table).insert(snake).select().single();
     if (error) throw error;
     const inserted = toCamel(table, data);
-    // Atualiza memória + localStorage sincronamente (evita round-trip extra no render)
-    if (Array.isArray(DB_CACHE[table])) { DB_CACHE[table].push(inserted); try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
-    invalidateCache(table);
+    // Atualiza memória + localStorage sincronamente (evita refetch caro no próximo render)
+    if (Array.isArray(DB_CACHE[table])) {
+      DB_CACHE[table].push(inserted);
+      CACHE_TS[table] = Date.now();
+      try { setDBLocal(table, DB_CACHE[table]); } catch(e){}
+    }
     return inserted;
   } catch(e) { console.error('DB insert error:', e); toast('Erro ao salvar: ' + e.message, 'error'); return record; }
 }
@@ -2997,9 +3000,8 @@ async function dbUpdate(table, id, updates) {
     // Atualiza memória + localStorage sem esperar reload
     if (Array.isArray(DB_CACHE[table])) {
       const i = DB_CACHE[table].findIndex(x=>x.id===id);
-      if (i>=0) { DB_CACHE[table][i] = {...DB_CACHE[table][i], ...updates}; try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
+      if (i>=0) { DB_CACHE[table][i] = {...DB_CACHE[table][i], ...updates}; CACHE_TS[table] = Date.now(); try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
     }
-    invalidateCache(table);
   } catch(e) { console.error('DB update error:', e); }
 }
 
@@ -3010,9 +3012,9 @@ async function dbDelete(table, id) {
     if (error) throw error;
     if (Array.isArray(DB_CACHE[table])) {
       DB_CACHE[table] = DB_CACHE[table].filter(x=>x.id!==id);
+      CACHE_TS[table] = Date.now();
       try { setDBLocal(table, DB_CACHE[table]); } catch(e){}
     }
-    invalidateCache(table);
   } catch(e) { console.error('DB delete error:', e); }
 }
 
@@ -3022,8 +3024,14 @@ async function dbBulkInsert(table, records) {
     const snaked = records.map(r => { const s = toSnake(table, r); if (currentUser) s.user_id = currentUser.id; return s; });
     const { data, error } = await supabaseClient.from(table).insert(snaked).select();
     if (error) throw error;
-    invalidateCache(table);
-    return (data || []).map(r => toCamel(table, r));
+    const mapped = (data || []).map(r => toCamel(table, r));
+    // Atualiza cache in-place — evita refetch caro depois
+    if (Array.isArray(DB_CACHE[table])) {
+      DB_CACHE[table].push(...mapped);
+      CACHE_TS[table] = Date.now();
+      try { setDBLocal(table, DB_CACHE[table]); } catch(e){}
+    }
+    return mapped;
   } catch(e) { console.error('DB bulk insert error:', e); return records; }
 }
 
@@ -4137,62 +4145,84 @@ async function previewParcelas() {
 }
 let _salvandoContratoGF = false;
 async function salvarContrato() {
+  console.log('[salvarContrato] clicado, flag=',_salvandoContratoGF);
   // Bloqueia clique duplo
-  if (_salvandoContratoGF) return;
+  if (_salvandoContratoGF) { console.warn('[salvarContrato] já em progresso — abortando'); return; }
   _salvandoContratoGF = true;
   const _btnSalvarGF = document.querySelector('#modal-contrato .btn-primary, #modal-contrato .btn-success');
   if (_btnSalvarGF) { _btnSalvarGF.disabled = true; _btnSalvarGF.textContent = '⏳ Salvando...'; }
+  // Reset defensivo: garante que a flag sempre seja liberada, não importa o erro
+  const _resetSave = () => {
+    _salvandoContratoGF = false;
+    if (_btnSalvarGF) { _btnSalvarGF.disabled = false; _btnSalvarGF.textContent = 'Confirmar'; }
+  };
 
-  const tipoContrato=document.getElementById('emp-tipo-contrato').value;
-  const editId=document.getElementById('emp-id').value;
+  try {
+    const tipoContrato=document.getElementById('emp-tipo-contrato').value;
+    const editId=document.getElementById('emp-id').value;
+    console.log('[salvarContrato] tipo=',tipoContrato,'editId=',editId);
 
-  // Se é edição, atualizar dados sem recriar parcelas
-  if(editId){
-    const r = await salvarEdicaoContrato(editId,tipoContrato);
-    _salvandoContratoGF = false; if (_btnSalvarGF) { _btnSalvarGF.disabled = false; _btnSalvarGF.textContent = 'Salvar'; }
-    return r;
+    // Se é edição, atualizar dados sem recriar parcelas
+    if(editId){
+      const r = await salvarEdicaoContrato(editId,tipoContrato);
+      _resetSave();
+      return r;
+    }
+
+    // Validar limite do plano
+    const planCheck = await checkPlanLimit();
+    if (!planCheck.canCreate) { _resetSave(); showUpgradeModal(planCheck.ativos, planCheck.max, planCheck.planoAtual); return; }
+
+    const cl=await dbSelect('clientes');
+
+    if(tipoContrato==='parcela-unica') {
+      _resetSave();
+      return salvarParcelaUnica(cl);
+    } else if(tipoContrato==='troca-cheques') {
+      _resetSave();
+      return salvarTrocaCheques(cl);
+    }
+
+    // CONTRATO COMUM - NOVO
+    const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
+    console.log('[salvarContrato] campos:',{pid,v,t,n,ini,freq,tipoJuros});
+    if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');_resetSave();return;}
+    const cliente=cl.find(x=>x.id===pid);
+    if(cliente && cliente.limiteCredito){
+      const es=await dbSelect('emprestimos');
+      const contratosAtivos=es.filter(e=>e.pessoaId===pid&&(e.status==='ativo'||e.status==='atrasado'));
+      const totalUtilizado=contratosAtivos.reduce((s,e)=>s+Number(e.valor||0),0);
+      const disponivel=Number(cliente.limiteCredito)-totalUtilizado;
+      if(v>disponivel){toast(`Limite de crédito excedido! Disponível: ${moeda(Math.max(0,disponivel))}`,'error');_resetSave();return;}
+    }
+    const diaUtilOpts = readDiaUtilOpts();
+    const eid=genId();
+    const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
+    console.log('[salvarContrato] dbInsert emprestimos...');
+    const insertedEmp = await dbInsert('emprestimos',empRecord);
+    console.log('[salvarContrato] inserted:',insertedEmp);
+    const actualEid = insertedEmp.id || eid;
+    const c=calcParcelas(v,t,n,tipoJuros,freq),vs=await gerarVencimentos(ini,freq,n,diaUtilOpts);
+    const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
+    console.log('[salvarContrato] dbBulkInsert parcelas...',parcRecords.length);
+    await dbBulkInsert('parcelas',parcRecords);
+    // UX: fecha modal e mostra toast IMEDIATAMENTE — o resto roda em background
+    _resetSave();
+    closeModal('modal-contrato');
+    toast('Contrato criado!');
+    // Re-render usa cache já atualizado pelos inserts (não refetcha do servidor)
+    renderContratos();
+    updateSidebarPlan();
+    const primParcela=c[0],valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
+    const freqLabel={diario:'Diário',semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
+    // Anexos e WhatsApp em background (não bloqueia UX)
+    salvarAnexosTemp(actualEid).catch(e=>console.error('anexos:',e));
+    setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel), 300);
+  } catch(e) {
+    console.error('[salvarContrato] erro:',e);
+    toast('Erro ao salvar contrato: '+(e.message||e),'error');
+    _resetSave();
   }
-
-  // Validar limite do plano
-  const planCheck = await checkPlanLimit();
-  if (!planCheck.canCreate) { _salvandoContratoGF = false; if (_btnSalvarGF) { _btnSalvarGF.disabled = false; _btnSalvarGF.textContent = 'Salvar'; } showUpgradeModal(planCheck.ativos, planCheck.max, planCheck.planoAtual); return; }
-
-  const cl=await dbSelect('clientes');
-
-  if(tipoContrato==='parcela-unica') {
-    return salvarParcelaUnica(cl);
-  } else if(tipoContrato==='troca-cheques') {
-    return salvarTrocaCheques(cl);
-  }
-
-  // CONTRATO COMUM - NOVO
-  const pid=document.getElementById('emp-pessoa').value,v=parseFloat(document.getElementById('emp-valor').value),t=parseFloat(document.getElementById('emp-taxa').value),n=parseInt(document.getElementById('emp-nparcelas').value),ini=document.getElementById('emp-inicio').value,freq=document.getElementById('emp-frequencia').value,tipoJuros=document.getElementById('emp-tipo-juros').value;
-  if(!pid||!v||!t||!n||!ini){toast('Preencha todos os campos','error');_salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}return;}
-  const cliente=cl.find(x=>x.id===pid);
-  if(cliente && cliente.limiteCredito){
-    const es=await dbSelect('emprestimos');
-    const contratosAtivos=es.filter(e=>e.pessoaId===pid&&(e.status==='ativo'||e.status==='atrasado'));
-    const totalUtilizado=contratosAtivos.reduce((s,e)=>s+Number(e.valor||0),0);
-    const disponivel=Number(cliente.limiteCredito)-totalUtilizado;
-    if(v>disponivel){toast(`Limite de crédito excedido! Disponível: ${moeda(Math.max(0,disponivel))}`,'error');return;}
-  }
-  const diaUtilOpts = readDiaUtilOpts();
-  const eid=genId();
-  const empRecord={id:eid,pessoaId:pid,valor:v,taxaJuros:t,tipoJuros:tipoJuros,sistema:'price',numParcelas:n,dataInicio:ini,frequencia:freq,status:'ativo',obs:document.getElementById('emp-obs').value.trim(),criadoEm:today(),renegociadoDe:null,considerarSabado:diaUtilOpts.considerarSabado,considerarDomingo:diaUtilOpts.considerarDomingo,considerarFeriado:diaUtilOpts.considerarFeriado};
-  const insertedEmp = await dbInsert('emprestimos',empRecord);
-  const actualEid = insertedEmp.id || eid;
-  const c=calcParcelas(v,t,n,tipoJuros,freq),vs=await gerarVencimentos(ini,freq,n,diaUtilOpts);
-  const parcRecords=c.map((p,i)=>({id:genId(),emprestimoId:actualEid,numero:p.numero,valorPrincipal:p.amortizacao,valorJuros:p.juros,valorTotal:p.parcela,dataVencimento:vs[i],status:'pendente',dataPagamento:null,valorPago:0,jurosMora:0}));
-  await dbBulkInsert('parcelas',parcRecords);
-  // Salvar anexos temporários
-  await salvarAnexosTemp(actualEid);
-  _salvandoContratoGF=false;if(_btnSalvarGF){_btnSalvarGF.disabled=false;_btnSalvarGF.textContent='Salvar';}
-  closeModal('modal-contrato');toast('Contrato criado!');
-  invalidateCache('emprestimos');invalidateCache('parcelas');
-  await renderContratos();updateSidebarPlan();
-  const primParcela=c[0],valorTotalContrato=c.reduce((s,p)=>s+p.parcela,0);
-  const freqLabel={diario:'Diário',semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
-  setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel), 300);
 }
 
 async function salvarEdicaoContrato(eid,tipoContrato){
