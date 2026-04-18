@@ -3918,9 +3918,19 @@ async function renderCobradores() {
 // CONTRATOS (EMPRÉSTIMOS)
 // ================================================
 async function openContratoModal() {
-  const cl=await dbSelect('clientes'); if(!cl.length){toast('Cadastre um cliente primeiro','warning');return;}
+  console.log('[openContratoModal] start');
+  let cl = await dbSelect('clientes');
+  console.log('[openContratoModal] clientes:', cl?.length);
+  // Se cache veio vazio mas há fetch em voo, aguarda a rede antes de desistir
+  if ((!cl || !cl.length) && CACHE_LOADING && CACHE_LOADING['clientes']) {
+    console.log('[openContratoModal] aguardando rede...');
+    try { cl = await CACHE_LOADING['clientes']; } catch(e){}
+    console.log('[openContratoModal] pós-rede:', cl?.length);
+  }
+  if(!cl || !cl.length){ toast('Cadastre um cliente primeiro','warning'); return; }
   // Guardar clientes pra uso nos sub-formulários
-  window._contratoClientes=cl;
+  window._contratoClientes = cl;
+  console.log('[openContratoModal] abrindo modal-tipo-contrato');
   openModal('modal-tipo-contrato');
 }
 
