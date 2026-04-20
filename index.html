@@ -2371,6 +2371,15 @@ let CACHE_TTL = 30000; // 30 seconds cache
 let CACHE_TS = {}; // timestamps
 let CACHE_LOADING = {}; // prevent duplicate requests
 
+// Handler global: se alguma operação de DB falhar e não for capturada, mostra toast
+// (antes esses erros ficavam só no console e o usuário achava que tinha salvado)
+window.addEventListener('unhandledrejection', function(ev){
+  const msg = (ev.reason && (ev.reason.message || ev.reason.details)) || String(ev.reason||'');
+  if(/update|insert|delete|supabase|PGRST|RLS|row.level/i.test(msg)){
+    try { if(typeof toast==='function') toast('Falha ao salvar no servidor: '+msg,'error'); } catch(e){}
+  }
+});
+
 function initSupabase() {
   const url = 'https://skbjymjwxjkzbvitlgpw.supabase.co';
   const key = 'sb_publishable_XAkko4MxjhEButK8xV4KUg_Yd24YBRP';
@@ -2991,7 +3000,7 @@ async function dbInsert(table, record) {
 }
 
 async function dbUpdate(table, id, updates) {
-  if (!isConnected()) { const arr = getDBLocal(table); const i = arr.findIndex(x=>x.id===id); if(i>=0) arr[i]={...arr[i],...updates}; setDBLocal(table,arr); return; }
+  if (!isConnected()) { const arr = getDBLocal(table); const i = arr.findIndex(x=>x.id===id); if(i>=0) arr[i]={...arr[i],...updates}; setDBLocal(table,arr); return true; }
   try {
     const snake = toSnake(table, updates);
     delete snake.id;
@@ -3002,7 +3011,12 @@ async function dbUpdate(table, id, updates) {
       const i = DB_CACHE[table].findIndex(x=>x.id===id);
       if (i>=0) { DB_CACHE[table][i] = {...DB_CACHE[table][i], ...updates}; CACHE_TS[table] = Date.now(); try { setDBLocal(table, DB_CACHE[table]); } catch(e){} }
     }
-  } catch(e) { console.error('DB update error:', e); }
+    return true;
+  } catch(e) {
+    console.error('DB update error:', table, id, e);
+    // Propaga o erro pra que o chamador possa avisar o usuário — antes era engolido silenciosamente
+    throw e;
+  }
 }
 
 async function dbDelete(table, id) {
@@ -4730,6 +4744,9 @@ async function salvarPagamento() {
     }
 
     verContrato(eid);
+  } catch(e) {
+    console.error('[salvarPagamento] erro:', e);
+    toast('Erro ao salvar pagamento: '+(e.message||e)+'. Dados NÃO foram salvos.','error');
   } finally {
     _salvandoPagamento=false;
     if(btnConfirmar){btnConfirmar.disabled=false;btnConfirmar.textContent='Confirmar';}
