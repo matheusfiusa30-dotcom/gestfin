@@ -5111,6 +5111,7 @@ async function renderCaixa() {
     const pendentes = es.filter(e => !e.desembolsoGerado).length;
     actionsEl.innerHTML = `
       <button class="btn btn-primary" onclick="abrirModalAporte()">💙 Novo aporte</button>
+      <button class="btn btn-ghost" onclick="ajustarSaldoCaixa()">⚖️ Ajustar saldo</button>
       ${pendentes>0 ? `<button class="btn btn-ghost" onclick="abrirListaContratosSemDesembolso()">📊 Marcar origem de capital (${pendentes} contrato${pendentes>1?'s':''})</button>` : ''}
     `;
   }
@@ -5144,6 +5145,34 @@ async function renderCaixa() {
         <div style="font-size:0.95rem;font-weight:700;color:${m.cor};white-space:nowrap;margin-left:8px;">${m.val>=0?'+':'−'}${moeda(Math.abs(m.val))}</div>
       </div>`;
     }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações neste mês</div>';
+  }
+}
+
+// ========== AJUSTE BRUTO DE SALDO ==========
+async function ajustarSaldoCaixa(){
+  const saldo = await calcSaldoCaixa();
+  const input = prompt(`Saldo atual: ${moeda(saldo)}\n\nInforme o saldo desejado (ex: 1340.29):`);
+  if(input===null) return;
+  const alvo = parseFloat(String(input).replace(',','.'));
+  if(isNaN(alvo)){ toast('Valor inválido','error'); return; }
+  const diff = alvo - saldo;
+  if(Math.abs(diff) < 0.005){ toast('Saldo já está correto'); return; }
+  const sinal = diff > 0 ? 'ENTRADA' : 'SAÍDA';
+  if(!await showConfirm(`Criar ajuste de ${sinal} ${moeda(Math.abs(diff))}?\nNovo saldo: ${moeda(alvo)}\n\nNenhum lançamento existente será alterado.`)) return;
+  try {
+    const data = today();
+    if(diff > 0){
+      // Precisa aumentar → aporte
+      await registrarAporte(diff, data, 'Ajuste de saldo (bruto)');
+    } else {
+      // Precisa reduzir → despesa
+      await dbInsert('despesas', { id: genId(), data, valor: Math.abs(diff), descricao: 'Ajuste de saldo (bruto)', categoria: 'ajuste', emprestimoId: null, criadoEm: data });
+    }
+    toast(`Saldo ajustado para ${moeda(alvo)}`);
+    if(document.querySelector('.page.active')?.id==='page-caixa') renderCaixa();
+  } catch(e){
+    console.error('[ajustarSaldoCaixa]',e);
+    toast('Erro ao ajustar: '+(e.message||e),'error');
   }
 }
 
