@@ -1663,6 +1663,7 @@ table td { font-size: 0.85rem; }
     <h2>Caixa</h2>
     <input class="form-control" type="month" id="caixa-mes" style="width:auto;" onchange="renderCaixa()">
   </div>
+  <div id="caixa-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
   <div class="stats-grid" id="caixa-stats"></div>
   <div class="card desktop-only-card">
     <div class="card-header"><h3>Movimentações</h3></div>
@@ -2249,6 +2250,57 @@ table td { font-size: 0.85rem; }
   </div>
 </div>
 
+
+<!-- Modal Aporte avulso -->
+<div class="modal-overlay" id="modal-aporte">
+  <div class="modal">
+    <div class="modal-header"><h3>💙 Novo Aporte</h3><button class="btn-icon" onclick="closeModal('modal-aporte')">&times;</button></div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">Registre dinheiro próprio entrando no caixa (capital do dono).</p>
+      <div class="form-row">
+        <div class="form-group"><label>Valor *</label><input class="form-control" type="number" id="aporte-valor" step="0.01" placeholder="0,00"></div>
+        <div class="form-group"><label>Data *</label><input class="form-control" type="date" id="aporte-data"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><input class="form-control" id="aporte-obs" placeholder="Ex: Capital inicial, reforço de caixa..."></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-aporte')">Cancelar</button><button class="btn btn-primary" onclick="salvarAporte()">Registrar</button></div>
+  </div>
+</div>
+
+<!-- Modal Origem do Capital (contrato) -->
+<div class="modal-overlay" id="modal-origem-capital">
+  <div class="modal">
+    <div class="modal-header"><h3>📊 Origem do Capital</h3><button class="btn-icon" onclick="closeModal('modal-origem-capital')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="origem-emp-id">
+      <div style="background:var(--bg-primary);padding:12px;border-radius:var(--radius-sm);margin-bottom:14px;">
+        <div style="font-size:0.8rem;color:var(--text-muted);">Contrato</div>
+        <div style="font-weight:600;" id="origem-titulo">—</div>
+        <div style="margin-top:8px;font-size:0.75rem;color:var(--text-muted);">Saldo em caixa: <strong id="origem-saldo-atual">—</strong></div>
+      </div>
+      <p style="font-size:0.85rem;margin-bottom:10px;">De onde veio os <strong id="origem-valor-total">—</strong>?</p>
+      <div class="form-row">
+        <div class="form-group"><label>Do caixa (capital existente)</label><input class="form-control" type="number" id="origem-do-caixa" step="0.01" oninput="origemCapitalBalance('caixa')"></div>
+        <div class="form-group"><label>Aporte (capital novo)</label><input class="form-control" type="number" id="origem-do-aporte" step="0.01" oninput="origemCapitalBalance('aporte')"></div>
+      </div>
+      <div class="form-group"><label>Data do desembolso</label><input class="form-control" type="date" id="origem-data"></div>
+      <div id="origem-validacao" style="font-size:0.8rem;margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="cancelarOrigemCapital()">Cancelar</button><button class="btn btn-primary" onclick="salvarOrigemCapital()">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Modal lista de contratos sem desembolso -->
+<div class="modal-overlay" id="modal-sem-desembolso">
+  <div class="modal">
+    <div class="modal-header"><h3>Contratos sem origem de capital</h3><button class="btn-icon" onclick="closeModal('modal-sem-desembolso')">&times;</button></div>
+    <div class="modal-body">
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">Marque individualmente se cada contrato usou capital do caixa, aporte novo ou os dois — o saldo de caixa será atualizado automaticamente.</p>
+      <div id="sem-desembolso-list" style="max-height:50vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('modal-sem-desembolso')">Fechar</button></div>
+  </div>
+</div>
 
 <!-- Modal Cobrador -->
 <div class="modal-overlay" id="modal-cobrador">
@@ -2878,12 +2930,12 @@ window.addEventListener('scroll', () => {
 // Column name mapping (JS camelCase -> SQL snake_case)
 const COL_MAP = {
   clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', limiteCredito:'limite_credito', criadoEm:'criado_em' },
-  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de', considerarSabado:'considerar_sabado', considerarDomingo:'considerar_domingo', considerarFeriado:'considerar_feriado' },
+  emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de', considerarSabado:'considerar_sabado', considerarDomingo:'considerar_domingo', considerarFeriado:'considerar_feriado', desembolsoGerado:'desembolso_gerado' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
   pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
   cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
   anexos: { refId:'ref_id', mimeType:'mime_type', criadoEm:'criado_em' },
-  despesas: { criadoEm:'criado_em' },
+  despesas: { criadoEm:'criado_em', emprestimoId:'emprestimo_id' },
   cobradores: { criadoEm:'criado_em' }
 };
 
@@ -4231,7 +4283,10 @@ async function salvarContrato() {
     const freqLabel={diario:'Diário',semanal:'Semanal (7 dias)',quinzenal:'Quinzenal (15 dias)',mensal:'Mensal'}[freq]||'Mensal';
     // Anexos e WhatsApp em background (não bloqueia UX)
     salvarAnexosTemp(actualEid).catch(e=>console.error('anexos:',e));
-    setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, valorTotalContrato, primParcela.parcela, n, vs[0], freqLabel), 300);
+    // Abre modal de origem de capital pra marcar desembolso (caixa ou aporte)
+    setTimeout(()=>abrirModalOrigemCapital(actualEid), 300);
+    // WhatsApp fica pro usuário após confirmar origem do capital — guardamos pra chamar depois
+    window._pendingWhatsApp = { cliente, actualEid, v, valorTotalContrato, primParcela, n, vs, freqLabel };
   } catch(e) {
     console.error('[salvarContrato] erro:',e);
     toast('Erro ao salvar contrato: '+(e.message||e),'error');
@@ -4421,6 +4476,8 @@ async function excluirContratoPermanente(eid) {
       const chequesDoContrato = (cheques||[]).filter(c => c.contratoId === eid);
       for (const c of chequesDoContrato) { await dbDelete('cheques', c.id); }
     } catch(e) { console.warn('Erro ao excluir cheques:', e); }
+    // Excluir desembolsos vinculados (fluxo de caixa)
+    try { await removerDesembolsosDoContrato(eid); } catch(e) { console.warn('Erro ao excluir desembolsos:', e); }
     // Excluir o contrato
     await dbDelete('emprestimos', eid);
     invalidateCache('emprestimos'); invalidateCache('parcelas'); invalidateCache('cheques'); invalidateCache('anexos');
@@ -4577,7 +4634,11 @@ async function verContrato(eid, fromPopState) {
     <div class="stat-card"><div class="label">Total Previsto</div><div class="value">${moeda(tp)}</div></div>
     <div class="stat-card success"><div class="label">Total Pago</div><div class="value">${moeda(tpg)}</div></div>
     <div class="stat-card ${sd>0?'warning':'success'}"><div class="label">Saldo Devedor</div><div class="value">${moeda(sd)}</div></div>
-    ${mc>0?`<div class="stat-card danger"><div class="label">Mora Acumulada</div><div class="value">${moeda(mc)}</div></div>`:''}`;
+    ${mc>0?`<div class="stat-card danger"><div class="label">Mora Acumulada</div><div class="value">${moeda(mc)}</div></div>`:''}
+    <div class="stat-card ${e.desembolsoGerado?'success':'warning'}" style="cursor:pointer;" onclick="${e.desembolsoGerado?`desfazerOrigemCapital('${eid}')`:`abrirModalOrigemCapital('${eid}')`}">
+      <div class="label">Origem do Capital</div>
+      <div class="value" style="font-size:0.95rem;">${e.desembolsoGerado?'✓ Registrada':'📊 Marcar'}</div>
+    </div>`;
   document.getElementById('parcelas-table').innerHTML=ps.map(x=>{const at=x.status==='pendente'&&x.dataVencimento<h,mr=at?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):(x.jurosMora||0);return `<tr><td>${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorPrincipal)}</td><td>${moeda(x.valorJuros)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${x.valorPago?moeda(x.valorPago):'-'}</td><td><span class="badge ${x.status==='paga'?'badge-success':at?'badge-danger':'badge-info'}">${x.status==='paga'?'Paga':at?'Atrasada':'Pendente'}</span></td><td>${x.status!=='paga'?`<button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${eid}')">Pagar</button>`:''}</td></tr>`;}).join('');
   document.getElementById('pagamentos-hist-table').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).map(pg=>{const pc=ps.find(x=>x.id===pg.parcelaId);return `<tr><td>${fmtData(pg.data)}</td><td>${pc?'#'+pc.numero:'-'}</td><td>${moeda(pg.valor)}</td><td><span class="badge badge-info">${pg.tipo}</span></td><td>${esc(pg.obs||'-')}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhum pagamento</td></tr>';
   carregarAnexosContrato(eid);
@@ -4971,24 +5032,258 @@ async function renderDespesas() {
 // ================================================
 // CAIXA
 // ================================================
+
+// Classificação de movimentação: distingue pagamento de cliente de aporte do dono,
+// e despesa comum de desembolso (empréstimo concedido).
+function classifyPagamento(p){
+  if(p.tipo==='aporte' || (!p.parcelaId && !p.emprestimoId)) return 'aporte';
+  return 'pagamento';
+}
+function classifyDespesa(d){
+  if(d.categoria==='desembolso' || d.emprestimoId) return 'desembolso';
+  return 'despesa';
+}
+
+// Saldo em caixa considerando TODO o histórico (sem filtro de mês).
+// Entradas = pagamentos + aportes. Saídas = despesas + desembolsos.
+async function calcSaldoCaixa(){
+  const [pgs, ds] = await Promise.all([dbSelect('pagamentos'), dbSelect('despesas')]);
+  const entradas = pgs.reduce((s,p)=>s + Number(p.valor||0), 0);
+  const saidas = ds.reduce((s,d)=>s + Number(d.valor||0), 0);
+  return entradas - saidas;
+}
+
+// Registra um aporte (capital próprio do dono entrando em caixa).
+async function registrarAporte(valor, data, obs){
+  const rec = { id: genId(), parcelaId: null, emprestimoId: null, valor: Number(valor), data: data || today(), tipo: 'aporte', obs: obs || 'Aporte de capital' };
+  return dbInsert('pagamentos', rec);
+}
+
+// Registra desembolso (saída de caixa pelo empréstimo concedido).
+async function registrarDesembolso(empId, valor, data, nomeCliente){
+  const rec = { id: genId(), data: data || today(), valor: Number(valor), descricao: 'Empréstimo concedido a '+(nomeCliente||'cliente'), categoria: 'desembolso', emprestimoId: empId, criadoEm: today() };
+  return dbInsert('despesas', rec);
+}
+
+// Apaga desembolsos vinculados a um contrato (usado ao excluir contrato ou desfazer marcação).
+async function removerDesembolsosDoContrato(empId){
+  const ds = await dbSelect('despesas');
+  const alvos = ds.filter(d => d.emprestimoId === empId && d.categoria === 'desembolso');
+  for(const d of alvos){ try { await dbDelete('despesas', d.id); } catch(e){ console.error('remover desembolso:',e); } }
+  return alvos.length;
+}
+
 async function renderCaixa() {
   const mesInput=document.getElementById('caixa-mes');if(!mesInput.value)mesInput.value=today().substring(0,7);
-  const mes=mesInput.value,pgs=(await dbSelect('pagamentos')).filter(p=>p.data.startsWith(mes)),ds=(await dbSelect('despesas')).filter(d=>d.data.startsWith(mes));
-  const totalEnt=pgs.reduce((s,p)=>s+p.valor,0),totalSai=ds.reduce((s,d)=>s+d.valor,0),saldo=totalEnt-totalSai;
+  const mes=mesInput.value;
+  const [allPgs, allDs] = await Promise.all([dbSelect('pagamentos'), dbSelect('despesas')]);
+  const pgs = allPgs.filter(p=>p.data && p.data.startsWith(mes));
+  const ds = allDs.filter(d=>d.data && d.data.startsWith(mes));
+
+  // Classifica cada movimento
+  const pagamentos = pgs.filter(p => classifyPagamento(p)==='pagamento');
+  const aportes = pgs.filter(p => classifyPagamento(p)==='aporte');
+  const despesas = ds.filter(d => classifyDespesa(d)==='despesa');
+  const desembolsos = ds.filter(d => classifyDespesa(d)==='desembolso');
+
+  const totalPag = pagamentos.reduce((s,p)=>s+Number(p.valor||0),0);
+  const totalAp  = aportes.reduce((s,p)=>s+Number(p.valor||0),0);
+  const totalDesp = despesas.reduce((s,d)=>s+Number(d.valor||0),0);
+  const totalDesb = desembolsos.reduce((s,d)=>s+Number(d.valor||0),0);
+  const saldoMes = (totalPag+totalAp) - (totalDesp+totalDesb);
+  const saldoTotal = await calcSaldoCaixa();
+
   document.getElementById('caixa-stats').innerHTML=`
-    <div class="stat-card success"><div class="label">Entradas</div><div class="value">${moeda(totalEnt)}</div><div class="sub">${pgs.length} pagamento(s)</div></div>
-    <div class="stat-card danger"><div class="label">Saídas</div><div class="value">${moeda(totalSai)}</div><div class="sub">${ds.length} despesa(s)</div></div>
-    <div class="stat-card ${saldo>=0?'success':'danger'}"><div class="label">Saldo</div><div class="value">${moeda(saldo)}</div></div>`;
-  const movs=[...pgs.map(p=>({data:p.data,desc:'Pagamento recebido',tipo:'entrada',val:p.valor})),...ds.map(d=>({data:d.data,desc:d.descricao,tipo:'saida',val:d.valor}))].sort((a,b)=>a.data.localeCompare(b.data));
-  let acc=0;const mob=document.getElementById('caixa-mobile-list');
-  document.getElementById('caixa-table').innerHTML=movs.map(m=>{acc+=m.tipo==='entrada'?m.val:-m.val;return `<tr><td>${fmtData(m.data)}</td><td>${esc(m.desc)}</td><td><span class="badge ${m.tipo==='entrada'?'badge-success':'badge-danger'}">${m.tipo}</span></td><td>${m.tipo==='entrada'?moeda(m.val):''}</td><td>${m.tipo==='saida'?moeda(m.val):''}</td><td>${moeda(acc)}</td></tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações</td></tr>';
-  if(mob){let macc=0;mob.innerHTML=movs.length?movs.map(m=>{macc+=m.tipo==='entrada'?m.val:-m.val;const isEnt=m.tipo==='entrada';return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:0.85rem;font-weight:500;margin-bottom:2px;">${esc(m.desc)}</div>
-      <div style="font-size:0.7rem;color:var(--text-muted);">${fmtData(m.data)} &middot; Saldo: ${moeda(macc)}</div>
-    </div>
-    <div style="font-size:0.95rem;font-weight:700;color:var(${isEnt?'--success':'--danger'});white-space:nowrap;margin-left:8px;">${isEnt?'+':'−'}${moeda(m.val)}</div>
-  </div>`;}).join(''):'<div style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações</div>';}
+    <div class="stat-card ${saldoTotal>=0?'success':'danger'}"><div class="label">Saldo em Caixa</div><div class="value">${moeda(saldoTotal)}</div><div class="sub">disponível agora</div></div>
+    <div class="stat-card success"><div class="label">Pagamentos (mês)</div><div class="value">${moeda(totalPag)}</div><div class="sub">${pagamentos.length} recebidos</div></div>
+    <div class="stat-card" style="border-left:4px solid #1976d2;"><div class="label">Aportes (mês)</div><div class="value">${moeda(totalAp)}</div><div class="sub">${aportes.length} aporte(s)</div></div>
+    <div class="stat-card danger"><div class="label">Despesas (mês)</div><div class="value">${moeda(totalDesp)}</div><div class="sub">${despesas.length} despesa(s)</div></div>
+    <div class="stat-card" style="border-left:4px solid #f57c00;"><div class="label">Desembolsos (mês)</div><div class="value">${moeda(totalDesb)}</div><div class="sub">${desembolsos.length} empréstimo(s)</div></div>
+    <div class="stat-card ${saldoMes>=0?'success':'danger'}"><div class="label">Saldo do mês</div><div class="value">${moeda(saldoMes)}</div></div>`;
+
+  // Badge de ação: Novo aporte + Sincronizar histórico
+  const actionsEl = document.getElementById('caixa-actions');
+  if(actionsEl){
+    const es = await dbSelect('emprestimos');
+    const pendentes = es.filter(e => !e.desembolsoGerado).length;
+    actionsEl.innerHTML = `
+      <button class="btn btn-primary" onclick="abrirModalAporte()">💙 Novo aporte</button>
+      ${pendentes>0 ? `<button class="btn btn-ghost" onclick="abrirListaContratosSemDesembolso()">📊 Marcar origem de capital (${pendentes} contrato${pendentes>1?'s':''})</button>` : ''}
+    `;
+  }
+
+  // Monta lista unificada
+  const movs = [
+    ...pagamentos.map(p=>({data:p.data, desc:'Pagamento recebido', tipo:'pagamento', val:Number(p.valor||0), icone:'🟢', cor:'var(--success)'})),
+    ...aportes.map(p=>({data:p.data, desc:p.obs||'Aporte de capital', tipo:'aporte', val:Number(p.valor||0), icone:'🔵', cor:'#1976d2'})),
+    ...despesas.map(d=>({data:d.data, desc:d.descricao||'Despesa', tipo:'despesa', val:-Number(d.valor||0), icone:'🔴', cor:'var(--danger)'})),
+    ...desembolsos.map(d=>({data:d.data, desc:d.descricao||'Empréstimo concedido', tipo:'desembolso', val:-Number(d.valor||0), icone:'🟠', cor:'#f57c00'}))
+  ].sort((a,b)=>a.data.localeCompare(b.data));
+
+  let acc=0;
+  document.getElementById('caixa-table').innerHTML = movs.map(m=>{
+    acc += m.val;
+    const entrada = m.val>=0 ? moeda(m.val) : '';
+    const saida = m.val<0 ? moeda(-m.val) : '';
+    return `<tr><td>${fmtData(m.data)}</td><td>${m.icone} ${esc(m.desc)}</td><td><span class="badge" style="background:${m.cor};color:#fff;">${m.tipo}</span></td><td style="color:var(--success);">${entrada}</td><td style="color:var(--danger);">${saida}</td><td><strong>${moeda(acc)}</strong></td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações neste mês</td></tr>';
+
+  const mob = document.getElementById('caixa-mobile-list');
+  if(mob){
+    let macc=0;
+    mob.innerHTML = movs.length ? movs.map(m=>{
+      macc += m.val;
+      return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.85rem;font-weight:500;margin-bottom:2px;">${m.icone} ${esc(m.desc)}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">${fmtData(m.data)} &middot; Saldo: ${moeda(macc)}</div>
+        </div>
+        <div style="font-size:0.95rem;font-weight:700;color:${m.cor};white-space:nowrap;margin-left:8px;">${m.val>=0?'+':'−'}${moeda(Math.abs(m.val))}</div>
+      </div>`;
+    }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:20px;">Sem movimentações neste mês</div>';
+  }
+}
+
+// ========== MODAL DE APORTE AVULSO ==========
+function abrirModalAporte(){
+  document.getElementById('aporte-valor').value='';
+  document.getElementById('aporte-data').value=today();
+  document.getElementById('aporte-obs').value='';
+  openModal('modal-aporte');
+}
+async function salvarAporte(){
+  const v = parseFloat(document.getElementById('aporte-valor').value);
+  const d = document.getElementById('aporte-data').value;
+  const obs = document.getElementById('aporte-obs').value.trim();
+  if(!v || v<=0){ toast('Informe um valor válido','error'); return; }
+  if(!d){ toast('Informe a data','error'); return; }
+  try {
+    await registrarAporte(v, d, obs || 'Aporte de capital');
+    closeModal('modal-aporte');
+    toast('Aporte registrado!');
+    if(document.querySelector('.page.active')?.id==='page-caixa') renderCaixa();
+  } catch(e){
+    console.error('[salvarAporte]',e);
+    toast('Erro ao registrar aporte: '+(e.message||e),'error');
+  }
+}
+
+// ========== MODAL "ORIGEM DO CAPITAL" (para contrato individual) ==========
+let _origemCapitalEmp = null;
+async function abrirModalOrigemCapital(empId){
+  const es = await dbSelect('emprestimos');
+  const e = es.find(x=>x.id===empId);
+  if(!e){ toast('Contrato não encontrado','error'); return; }
+  const cl = await dbSelect('clientes');
+  const cliente = cl.find(x=>x.id===e.pessoaId);
+  _origemCapitalEmp = e;
+  document.getElementById('origem-titulo').textContent = (cliente?cliente.nome:'Cliente')+' · '+moeda(e.valor);
+  document.getElementById('origem-valor-total').textContent = moeda(e.valor);
+  document.getElementById('origem-emp-id').value = empId;
+  const saldo = await calcSaldoCaixa();
+  document.getElementById('origem-saldo-atual').textContent = moeda(saldo);
+  // Default: se saldo >= valor, sugere usar tudo do caixa; senão, divide
+  const valorContrato = Number(e.valor);
+  let doCaixa, deAporte;
+  if(saldo >= valorContrato){ doCaixa = valorContrato; deAporte = 0; }
+  else if(saldo > 0){ doCaixa = saldo; deAporte = valorContrato - saldo; }
+  else { doCaixa = 0; deAporte = valorContrato; }
+  document.getElementById('origem-do-caixa').value = doCaixa.toFixed(2);
+  document.getElementById('origem-do-aporte').value = deAporte.toFixed(2);
+  document.getElementById('origem-data').value = e.dataInicio || today();
+  openModal('modal-origem-capital');
+}
+
+function origemCapitalBalance(changed){
+  const total = Number(_origemCapitalEmp?.valor||0);
+  const caixaEl = document.getElementById('origem-do-caixa');
+  const aporteEl = document.getElementById('origem-do-aporte');
+  const caixa = parseFloat(caixaEl.value)||0;
+  const aporte = parseFloat(aporteEl.value)||0;
+  if(changed==='caixa'){
+    aporteEl.value = Math.max(0, total - caixa).toFixed(2);
+  } else if(changed==='aporte'){
+    caixaEl.value = Math.max(0, total - aporte).toFixed(2);
+  }
+  const soma = (parseFloat(caixaEl.value)||0) + (parseFloat(aporteEl.value)||0);
+  const okEl = document.getElementById('origem-validacao');
+  if(Math.abs(soma-total) < 0.01){ okEl.textContent='✓ Valores somam certo'; okEl.style.color='var(--success)'; }
+  else { okEl.textContent=`⚠ Soma ${moeda(soma)} ≠ ${moeda(total)}`; okEl.style.color='var(--danger)'; }
+}
+
+async function salvarOrigemCapital(){
+  const empId = document.getElementById('origem-emp-id').value;
+  const doCaixa = parseFloat(document.getElementById('origem-do-caixa').value)||0;
+  const deAporte = parseFloat(document.getElementById('origem-do-aporte').value)||0;
+  const data = document.getElementById('origem-data').value || today();
+  const total = Number(_origemCapitalEmp?.valor||0);
+  if(Math.abs((doCaixa+deAporte) - total) > 0.01){ toast('A soma das origens deve bater com o valor do contrato','error'); return; }
+  const cl = await dbSelect('clientes');
+  const cliente = cl.find(x=>x.id===_origemCapitalEmp.pessoaId);
+  const nomeCli = cliente?cliente.nome:'cliente';
+  try {
+    if(deAporte > 0){ await registrarAporte(deAporte, data, 'Aporte para contrato · '+nomeCli); }
+    // Desembolso SEMPRE é o valor total (dinheiro que saiu pro cliente)
+    await registrarDesembolso(empId, total, data, nomeCli);
+    await dbUpdate('emprestimos', empId, { desembolsoGerado: true });
+    closeModal('modal-origem-capital');
+    toast('Origem do capital registrada!');
+    if(document.querySelector('.page.active')?.id==='page-caixa') renderCaixa();
+    if(document.querySelector('.page.active')?.id==='page-contrato-detalhe') verContrato(empId);
+    // Dispara WhatsApp pendente (se foi originado via salvarContrato)
+    if(window._pendingWhatsApp && window._pendingWhatsApp.actualEid===empId){
+      const w = window._pendingWhatsApp; window._pendingWhatsApp = null;
+      setTimeout(()=>showContratoWhatsApp(w.cliente, w.actualEid, w.v, w.valorTotalContrato, w.primParcela.parcela, w.n, w.vs[0], w.freqLabel), 250);
+    }
+  } catch(e){
+    console.error('[salvarOrigemCapital]',e);
+    toast('Erro: '+(e.message||e),'error');
+  }
+}
+
+function cancelarOrigemCapital(){
+  closeModal('modal-origem-capital');
+  // Se foi disparado por criação de contrato, dispara WhatsApp mesmo assim
+  if(window._pendingWhatsApp){
+    const w = window._pendingWhatsApp; window._pendingWhatsApp = null;
+    toast('Origem não marcada — você pode marcar depois no detalhe do contrato');
+    setTimeout(()=>showContratoWhatsApp(w.cliente, w.actualEid, w.v, w.valorTotalContrato, w.primParcela.parcela, w.n, w.vs[0], w.freqLabel), 250);
+  }
+}
+
+async function desfazerOrigemCapital(empId){
+  if(!await showConfirm('Desfazer marcação de origem de capital?\nIsso remove o desembolso e os aportes vinculados a este contrato.')) return;
+  try {
+    const removidos = await removerDesembolsosDoContrato(empId);
+    // Remove aportes com obs mencionando esse cliente? Mais seguro deixar os aportes e só desmarcar a flag.
+    await dbUpdate('emprestimos', empId, { desembolsoGerado: false });
+    toast(`Desfeito (${removidos} desembolso(s) removido(s)). Aportes manuais mantidos.`);
+    if(document.querySelector('.page.active')?.id==='page-caixa') renderCaixa();
+    if(document.querySelector('.page.active')?.id==='page-contrato-detalhe') verContrato(empId);
+  } catch(e){ console.error('[desfazerOrigemCapital]',e); toast('Erro: '+(e.message||e),'error'); }
+}
+
+// ========== LISTA DE CONTRATOS SEM DESEMBOLSO GERADO ==========
+async function abrirListaContratosSemDesembolso(){
+  const es = await dbSelect('emprestimos');
+  const cl = await dbSelect('clientes');
+  const clMap = new Map(cl.map(c=>[c.id,c]));
+  const pendentes = es.filter(e=>!e.desembolsoGerado).sort((a,b)=>(b.dataInicio||'').localeCompare(a.dataInicio||''));
+  const list = document.getElementById('sem-desembolso-list');
+  if(!pendentes.length){ list.innerHTML='<p style="text-align:center;color:var(--text-muted);padding:20px;">Todos os contratos já têm origem de capital marcada ✓</p>'; }
+  else {
+    list.innerHTML = pendentes.map(e=>{
+      const cli = clMap.get(e.pessoaId);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-weight:600;">${esc(cli?cli.nome:'Cliente')}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">${fmtData(e.dataInicio||'')} · ${moeda(e.valor)}</div>
+        </div>
+        <button class="btn btn-primary" style="padding:6px 12px;font-size:0.8rem;" onclick="closeModal('modal-sem-desembolso');abrirModalOrigemCapital('${e.id}')">Marcar</button>
+      </div>`;
+    }).join('');
+  }
+  openModal('modal-sem-desembolso');
 }
 
 // ================================================
