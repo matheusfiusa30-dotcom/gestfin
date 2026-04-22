@@ -4284,9 +4284,9 @@ async function salvarContrato() {
     // Anexos e WhatsApp em background (não bloqueia UX)
     salvarAnexosTemp(actualEid).catch(e=>console.error('anexos:',e));
     // Abre modal de origem de capital pra marcar desembolso (caixa ou aporte)
-    setTimeout(()=>abrirModalOrigemCapital(actualEid), 300);
     // WhatsApp fica pro usuário após confirmar origem do capital — guardamos pra chamar depois
     window._pendingWhatsApp = { cliente, actualEid, v, valorTotalContrato, primParcela, n, vs, freqLabel };
+    setTimeout(()=>{ try { abrirModalOrigemCapital(actualEid); } catch(err){ console.error('[origem-capital abrir]',err); toast('Contrato criado. Marque origem do capital no detalhe.','warning'); } }, 600);
   } catch(e) {
     console.error('[salvarContrato] erro:',e);
     toast('Erro ao salvar contrato: '+(e.message||e),'error');
@@ -4427,7 +4427,8 @@ async function salvarParcelaUnica(cl) {
   closeModal('modal-contrato');toast('Parcela única criada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');
   await renderContratos();updateSidebarPlan();
-  setTimeout(()=>showContratoWhatsApp(cliente, actualEid, v, total, total, 1, vencStr, `Parcela única (${dias} dias)`), 300);
+  window._pendingWhatsApp = { cliente, actualEid, v, valorTotalContrato: total, primParcela: {parcela: total}, n: 1, vs: [vencStr], freqLabel: `Parcela única (${dias} dias)` };
+  setTimeout(()=>{ try { abrirModalOrigemCapital(actualEid); } catch(err){ console.error('[origem-capital abrir]',err); toast('Contrato criado. Marque origem do capital no detalhe.','warning'); } }, 600);
 }
 
 async function salvarTrocaCheques(cl) {
@@ -4452,6 +4453,8 @@ async function salvarTrocaCheques(cl) {
   closeModal('modal-contrato');toast('Troca de cheque registrada!');
   invalidateCache('emprestimos');invalidateCache('parcelas');invalidateCache('cheques');
   await renderContratos();updateSidebarPlan();
+  // Na troca de cheque, o "valor" desembolsado é o que foi entregue ao cliente (não o valor de face do cheque)
+  setTimeout(()=>{ try { abrirModalOrigemCapital(actualEid); } catch(err){ console.error('[origem-capital abrir]',err); toast('Contrato criado. Marque origem do capital no detalhe.','warning'); } }, 600);
 }
 
 // EXCLUIR CONTRATO PERMANENTEMENTE
