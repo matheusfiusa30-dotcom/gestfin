@@ -2932,7 +2932,7 @@ const COL_MAP = {
   clientes: { pessoaId:'pessoa_id', cobradorId:'cobrador_id', limiteCredito:'limite_credito', criadoEm:'criado_em' },
   emprestimos: { pessoaId:'pessoa_id', taxaJuros:'taxa_juros', tipoJuros:'tipo_juros', numParcelas:'num_parcelas', dataInicio:'data_inicio', frequencia:'frequencia', criadoEm:'criado_em', renegociadoDe:'renegociado_de', considerarSabado:'considerar_sabado', considerarDomingo:'considerar_domingo', considerarFeriado:'considerar_feriado', desembolsoGerado:'desembolso_gerado' },
   parcelas: { emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorTotal:'valor_total', dataVencimento:'data_vencimento', dataPagamento:'data_pagamento', valorPago:'valor_pago', jurosMora:'juros_mora' },
-  pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id' },
+  pagamentos: { parcelaId:'parcela_id', emprestimoId:'emprestimo_id', valorPrincipal:'valor_principal', valorJuros:'valor_juros', valorMora:'valor_mora' },
   cheques: { clienteId:'cliente_id', contratoId:'contrato_id', bomPara:'bom_para', criadoEm:'criado_em' },
   anexos: { refId:'ref_id', mimeType:'mime_type', criadoEm:'criado_em' },
   despesas: { criadoEm:'criado_em', emprestimoId:'emprestimo_id' },
@@ -4643,7 +4643,19 @@ async function verContrato(eid, fromPopState) {
       <div class="value" style="font-size:0.95rem;">${e.desembolsoGerado?'✓ Registrada':'📊 Marcar'}</div>
     </div>`;
   document.getElementById('parcelas-table').innerHTML=ps.map(x=>{const at=x.status==='pendente'&&x.dataVencimento<h,mr=at?calcMoraSync(x.dataVencimento,null,x.valorTotal,cfg):(x.jurosMora||0);return `<tr><td>${x.numero}</td><td>${fmtData(x.dataVencimento)}</td><td>${moeda(x.valorPrincipal)}</td><td>${moeda(x.valorJuros)}</td><td>${moeda(x.valorTotal)}</td><td>${mr>0?moeda(mr):'-'}</td><td>${x.valorPago?moeda(x.valorPago):'-'}</td><td><span class="badge ${x.status==='paga'?'badge-success':at?'badge-danger':'badge-info'}">${x.status==='paga'?'Paga':at?'Atrasada':'Pendente'}</span></td><td>${x.status!=='paga'?`<button class="btn btn-sm btn-success" onclick="abrirPagamento('${x.id}','${eid}')">Pagar</button>`:''}</td></tr>`;}).join('');
-  document.getElementById('pagamentos-hist-table').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).map(pg=>{const pc=ps.find(x=>x.id===pg.parcelaId);return `<tr><td>${fmtData(pg.data)}</td><td>${pc?'#'+pc.numero:'-'}</td><td>${moeda(pg.valor)}</td><td><span class="badge badge-info">${pg.tipo}</span></td><td>${esc(pg.obs||'-')}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhum pagamento</td></tr>';
+  document.getElementById('pagamentos-hist-table').innerHTML=pgs.length?pgs.sort((a,b)=>b.data.localeCompare(a.data)).map(pg=>{
+    const pc=ps.find(x=>x.id===pg.parcelaId);
+    const temBreakdown = pg.valorJuros != null || pg.valorPrincipal != null || pg.valorMora != null;
+    let breakdown = '';
+    if (temBreakdown) {
+      const partes = [];
+      if (Number(pg.valorPrincipal||0) > 0) partes.push(`P: ${moeda(pg.valorPrincipal)}`);
+      if (Number(pg.valorJuros||0) > 0) partes.push(`<span style="color:#16a34a;">J: ${moeda(pg.valorJuros)}</span>`);
+      if (Number(pg.valorMora||0) > 0) partes.push(`<span style="color:#dc2626;">M: ${moeda(pg.valorMora)}</span>`);
+      if (partes.length > 0) breakdown = `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${partes.join(' · ')}</div>`;
+    }
+    return `<tr><td>${fmtData(pg.data)}</td><td>${pc?'#'+pc.numero:'-'}</td><td>${moeda(pg.valor)}${breakdown}</td><td><span class="badge badge-info">${pg.tipo}</span></td><td>${esc(pg.obs||'-')}</td></tr>`;
+  }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhum pagamento</td></tr>';
   carregarAnexosContrato(eid);
   navigateToPage('contrato-detalhe');
 }
@@ -4788,8 +4800,53 @@ async function salvarPagamento() {
     }
 
     await dbUpdate('parcelas',pid,{valorPago:newValorPago,jurosMora:mr,dataPagamento:d,status:newStatus});
-    const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:obs};
-    await dbInsert('pagamentos',pagRecord);
+
+    // ===== SEPARAR JUROS RECEBIDOS DO PRINCIPAL =====
+    // Calcular quanto já foi pago anteriormente para mora, juros e principal nesta parcela
+    const pgsAntigos = (await dbSelect('pagamentos')).filter(x => x.parcelaId === pid);
+    let moraJaPaga = pgsAntigos.reduce((s,x) => s + Number(x.valorMora||0), 0);
+    let jurosJaPagos = pgsAntigos.reduce((s,x) => s + Number(x.valorJuros||0), 0);
+    let principalJaPago = pgsAntigos.reduce((s,x) => s + Number(x.valorPrincipal||0), 0);
+
+    // Se houver pagamentos antigos sem breakdown, distribuir o valor já pago proporcionalmente (compatibilidade)
+    const semBreakdown = pgsAntigos.filter(x => x.valorMora == null && x.valorJuros == null && x.valorPrincipal == null);
+    const valorSemBreakdown = semBreakdown.reduce((s,x) => s + Number(x.valor||0), 0);
+    if (valorSemBreakdown > 0) {
+      // Aplicar regra: mora primeiro, depois juros, depois principal
+      let restante = valorSemBreakdown;
+      const moraOriginal = Number(p.jurosMora||0);
+      const moraSplit = Math.min(restante, Math.max(0, moraOriginal - moraJaPaga));
+      moraJaPaga += moraSplit; restante -= moraSplit;
+      const jurosOriginal = Number(p.valorJuros||0);
+      const jurosSplit = Math.min(restante, Math.max(0, jurosOriginal - jurosJaPagos));
+      jurosJaPagos += jurosSplit; restante -= jurosSplit;
+      principalJaPago += restante;
+    }
+
+    // Aplicar split no NOVO pagamento (mora primeiro, depois juros, depois principal)
+    let restanteNovo = v;
+    const moraTotalParcela = Number(mr || 0);
+    const moraNovo = Math.min(restanteNovo, Math.max(0, moraTotalParcela - moraJaPaga));
+    restanteNovo -= moraNovo;
+    const jurosTotalParcela = Number(p.valorJuros || 0);
+    const jurosNovo = Math.min(restanteNovo, Math.max(0, jurosTotalParcela - jurosJaPagos));
+    restanteNovo -= jurosNovo;
+    const principalNovo = Math.max(0, restanteNovo); // Resto vai para principal (mesmo se exceder, é desconto/extra)
+
+    const pagRecord={id:genId(),parcelaId:pid,emprestimoId:eid,valor:v,data:d,tipo:t,obs:obs,
+      valorPrincipal: Number(principalNovo.toFixed(2)),
+      valorJuros: Number(jurosNovo.toFixed(2)),
+      valorMora: Number(moraNovo.toFixed(2))};
+    try {
+      await dbInsert('pagamentos',pagRecord);
+    } catch(insErr) {
+      // Fallback: se as colunas valor_principal/valor_juros/valor_mora ainda não existem na tabela do Supabase, salvar sem breakdown
+      console.warn('Insert com breakdown falhou, tentando sem breakdown:', insErr);
+      const fallbackRec = {id:pagRecord.id, parcelaId:pid, emprestimoId:eid, valor:v, data:d, tipo:t, obs:obs};
+      await dbInsert('pagamentos', fallbackRec);
+      // Indicar via toast que o split de juros não foi salvo
+      if (typeof toast === 'function') toast('⚠️ Split de juros salvo só em memória. Adicione colunas valor_principal/valor_juros/valor_mora na tabela pagamentos do Supabase.', 'warning');
+    }
     invalidateCache('parcelas');invalidateCache('pagamentos');
     closeModal('modal-pagamento');toast('Pagamento registrado!');
 
@@ -5096,9 +5153,29 @@ async function renderCaixa() {
   const saldoMes = (totalPag+totalAp) - (totalDesp+totalDesb);
   const saldoTotal = await calcSaldoCaixa();
 
+  // ===== SEPARAÇÃO DE JUROS RECEBIDOS =====
+  // Considerar juros + mora como "resultado de juros" (lucro bruto)
+  // Para pagamentos antigos sem breakdown, usar tipo='juros' como fallback
+  let totalJurosRecebidos = 0;
+  let totalPrincipalRecuperado = 0;
+  for (const p of pagamentos) {
+    const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
+    if (temBreakdown) {
+      totalJurosRecebidos += Number(p.valorJuros||0) + Number(p.valorMora||0);
+      totalPrincipalRecuperado += Number(p.valorPrincipal||0);
+    } else if (p.tipo === 'juros') {
+      totalJurosRecebidos += Number(p.valor||0);
+    } else {
+      // Fallback: sem breakdown, considerar tudo como principal recuperado
+      totalPrincipalRecuperado += Number(p.valor||0);
+    }
+  }
+
   document.getElementById('caixa-stats').innerHTML=`
     <div class="stat-card ${saldoTotal>=0?'success':'danger'}"><div class="label">Saldo em Caixa</div><div class="value">${moeda(saldoTotal)}</div><div class="sub">disponível agora</div></div>
     <div class="stat-card success"><div class="label">Pagamentos (mês)</div><div class="value">${moeda(totalPag)}</div><div class="sub">${pagamentos.length} recebidos</div></div>
+    <div class="stat-card" style="border-left:4px solid #16a34a;"><div class="label">💰 Juros Recebidos (mês)</div><div class="value" style="color:#16a34a;">${moeda(totalJurosRecebidos)}</div><div class="sub">resultado/lucro bruto</div></div>
+    <div class="stat-card" style="border-left:4px solid #6366f1;"><div class="label">🔄 Principal Recuperado</div><div class="value" style="color:#6366f1;">${moeda(totalPrincipalRecuperado)}</div><div class="sub">capital de volta</div></div>
     <div class="stat-card" style="border-left:4px solid #1976d2;"><div class="label">Aportes (mês)</div><div class="value">${moeda(totalAp)}</div><div class="sub">${aportes.length} aporte(s)</div></div>
     <div class="stat-card danger"><div class="label">Despesas (mês)</div><div class="value">${moeda(totalDesp)}</div><div class="sub">${despesas.length} despesa(s)</div></div>
     <div class="stat-card" style="border-left:4px solid #f57c00;"><div class="label">Desembolsos (mês)</div><div class="value">${moeda(totalDesb)}</div><div class="sub">${desembolsos.length} empréstimo(s)</div></div>
@@ -5118,7 +5195,20 @@ async function renderCaixa() {
 
   // Monta lista unificada
   const movs = [
-    ...pagamentos.map(p=>({data:p.data, desc:'Pagamento recebido', tipo:'pagamento', val:Number(p.valor||0), icone:'🟢', cor:'var(--success)'})),
+    ...pagamentos.map(p=>{
+      const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
+      let desc = 'Pagamento recebido';
+      if (temBreakdown) {
+        const partes = [];
+        if (Number(p.valorPrincipal||0) > 0) partes.push(`Principal ${moeda(p.valorPrincipal)}`);
+        if (Number(p.valorJuros||0) > 0) partes.push(`Juros ${moeda(p.valorJuros)}`);
+        if (Number(p.valorMora||0) > 0) partes.push(`Mora ${moeda(p.valorMora)}`);
+        if (partes.length > 0) desc = `Pagamento — ${partes.join(' + ')}`;
+      } else if (p.tipo === 'juros') {
+        desc = 'Pagamento de juros';
+      }
+      return {data:p.data, desc, tipo:'pagamento', val:Number(p.valor||0), icone:'🟢', cor:'var(--success)'};
+    }),
     ...aportes.map(p=>({data:p.data, desc:p.obs||'Aporte de capital', tipo:'aporte', val:Number(p.valor||0), icone:'🔵', cor:'#1976d2'})),
     ...despesas.map(d=>({data:d.data, desc:d.descricao||'Despesa', tipo:'despesa', val:-Number(d.valor||0), icone:'🔴', cor:'var(--danger)'})),
     ...desembolsos.map(d=>({data:d.data, desc:d.descricao||'Empréstimo concedido', tipo:'desembolso', val:-Number(d.valor||0), icone:'🟠', cor:'#f57c00'}))
