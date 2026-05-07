@@ -498,15 +498,10 @@ table td { font-size: 0.85rem; }
   .search-bar { max-width: 100%; }
   .search-bar input { border-radius: 10px; background: var(--bg-primary); }
 
-  /* iOS modal style */
-  .modal { border-radius: 16px 16px 0 0; max-height: 92vh; margin-top: auto; }
-  .modal-overlay.active { align-items: flex-end; }
+  /* Modal centralizado no mobile */
+  .modal { border-radius: 16px; max-height: 92vh; margin: auto; width: calc(100% - 24px); }
+  .modal-overlay.active { align-items: center; padding: 12px; }
   .modal-header { border-radius: 16px 16px 0 0; }
-  .modal-header::before {
-    content: ''; display: block; width: 36px; height: 4px;
-    background: var(--text-muted); border-radius: 2px; margin: 0 auto 12px;
-    opacity: 0.4;
-  }
 
   /* Larger touch targets */
   table tbody tr { min-height: 44px; }
@@ -1428,7 +1423,7 @@ table td { font-size: 0.85rem; }
     <h2>Contratos</h2>
     <div style="display:flex;gap:8px;align-items:center;">
       <select class="form-control" id="emp-filtro-status" style="width:auto;" onchange="renderContratos()">
-        <option value="all">Todos</option><option value="ativo">Ativos</option><option value="quitado">Quitados</option><option value="atrasado">Atrasados</option><option value="renegociado">Renegociados</option>
+        <option value="all">Em andamento</option><option value="ativo">Ativos</option><option value="atrasado">Atrasados</option><option value="quitado">Quitados</option><option value="renegociado">Renegociados</option>
       </select>
       <button class="btn btn-primary" onclick="openContratoModal()">+ Novo Contrato</button>
     </div>
@@ -1982,6 +1977,14 @@ table td { font-size: 0.85rem; }
         <div class="form-group"><label>Cobrador</label><select class="form-control" id="cliente-cobrador"><option value="">Nenhum</option></select></div>
       </div>
       <div class="form-group"><label>Observações</label><textarea class="form-control" id="cliente-obs"></textarea></div>
+      <!-- HISTÓRICO DE CONTRATOS DO CLIENTE -->
+      <div id="cliente-historico-wrap" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+        <h4 style="margin:0 0 8px 0;font-size:0.95rem;">📋 Histórico de Contratos</h4>
+        <div id="cliente-historico-resumo" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;"></div>
+        <div class="table-wrapper" style="max-height:280px;overflow:auto;">
+          <table style="font-size:0.82rem;"><thead><tr><th>Início</th><th>Valor</th><th>Parcelas</th><th>Status</th><th></th></tr></thead><tbody id="cliente-historico-table"></tbody></table>
+        </div>
+      </div>
     </div>
     <div class="modal-footer" style="justify-content:space-between;">
       <button class="btn btn-danger btn-sm" id="btn-excluir-cliente" style="display:none;" onclick="excluirClienteDoModal()">Excluir</button>
@@ -3890,9 +3893,48 @@ async function openClienteModal(id) {
     document.getElementById('cliente-limite').value=p.limiteCredito||'';
     document.getElementById('cliente-obs').value=p.obs||'';
     document.getElementById('btn-excluir-cliente').style.display='';
+    // Carregar histórico de contratos do cliente (TODOS os status, inclusive quitados/renegociados)
+    await carregarHistoricoContratosCliente(p.id);
   }}
-  else { document.getElementById('modal-cliente-titulo').textContent='Novo Cliente'; document.getElementById('btn-excluir-cliente').style.display='none'; }
+  else {
+    document.getElementById('modal-cliente-titulo').textContent='Novo Cliente';
+    document.getElementById('btn-excluir-cliente').style.display='none';
+    const wrap = document.getElementById('cliente-historico-wrap');
+    if (wrap) wrap.style.display = 'none';
+  }
   openModal('modal-cliente');
+}
+
+async function carregarHistoricoContratosCliente(clienteId){
+  const wrap = document.getElementById('cliente-historico-wrap');
+  if (!wrap) return;
+  const [es, ps] = await Promise.all([dbSelect('emprestimos'), dbSelect('parcelas')]);
+  const contratos = es.filter(e => e.pessoaId === clienteId)
+    .sort((a,b) => (b.dataInicio||'').localeCompare(a.dataInicio||''));
+  if (contratos.length === 0){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  // Resumo
+  const totalEmprestado = contratos.reduce((s,e) => s + Number(e.valor||0), 0);
+  const ativos = contratos.filter(e => e.status === 'ativo' || e.status === 'atrasado').length;
+  const quitados = contratos.filter(e => e.status === 'quitado').length;
+  document.getElementById('cliente-historico-resumo').innerHTML =
+    `${contratos.length} contrato(s) · ${ativos} em andamento · ${quitados} quitado(s) · Total emprestado: <strong>${moeda(totalEmprestado)}</strong>`;
+  // Tabela
+  const stm = {ativo:'badge-accent',quitado:'badge-success',atrasado:'badge-danger',renegociado:'badge-warning'};
+  document.getElementById('cliente-historico-table').innerHTML = contratos.map(e => {
+    const psE = ps.filter(p => p.emprestimoId === e.id);
+    const pagas = psE.filter(p => p.status === 'paga').length;
+    return `<tr style="cursor:pointer;" onclick="closeModal('modal-cliente');verContrato('${e.id}')">
+      <td>${fmtData(e.dataInicio)}</td>
+      <td>${moeda(e.valor)}</td>
+      <td>${pagas}/${e.numParcelas}</td>
+      <td><span class="badge ${stm[e.status]||'badge-info'}">${e.status||'-'}</span></td>
+      <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();closeModal('modal-cliente');verContrato('${e.id}')">Ver</button></td>
+    </tr>`;
+  }).join('');
 }
 async function excluirClienteDoModal() {
   const id=document.getElementById('cliente-id').value;
@@ -4645,7 +4687,13 @@ async function renderContratos() {
     if(e.status!==newStatus){e.status=newStatus;updates.push(dbUpdate('emprestimos',e.id,{status:newStatus}));}
   }
   if(updates.length)await Promise.all(updates);
-  const fil=f==='all'?es:es.filter(e=>e.status===f),tb=document.getElementById('contratos-table'),em=document.getElementById('contratos-empty');
+  // Por padrão, esconde contratos quitados e renegociados da lista principal.
+  // O usuário ainda pode visualizá-los selecionando o filtro específico (Quitados/Renegociados).
+  // O histórico completo do cliente (incluindo quitados) continua disponível na tela do cliente.
+  const fil = f==='all'
+    ? es.filter(e => e.status !== 'quitado' && e.status !== 'renegociado')
+    : es.filter(e => e.status === f);
+  const tb=document.getElementById('contratos-table'),em=document.getElementById('contratos-empty');
   if(!fil.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
   tb.innerHTML=fil.map(e=>{const p=clMap.get(e.pessoaId),ps=psByEmp.get(e.id)||[],pg=ps.filter(x=>x.status==='paga').length,pct=ps.length?Math.round(pg/ps.length*100):0;
     const stm={ativo:'badge-accent',quitado:'badge-success',atrasado:'badge-danger',renegociado:'badge-warning'};const fc=pct>=100?'green':pct>=50?'yellow':'red';
