@@ -444,48 +444,42 @@ table td { font-size: 0.85rem; }
     display: none !important; /* hide desktop headers on mobile */
   }
   .mobile-page-header {
-    display: flex !important;
-    /* Mesmo tratamento da home: card flutuante dentro da safe-area,
-       não vaza para cima da status bar/notch. */
-    position: relative; /* âncora para o page-title absoluto */
+    /* Grid 3 colunas iguais: back-btn (esquerda) | título (centro) | ação/spacer (direita)
+       Garante centralização perfeita independente do que tem em cada lado. */
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     margin: env(safe-area-inset-top, 24px) 12px 12px 12px;
     padding: 14px 16px;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    min-height: 44px; /* garante altura para o título absoluto não colapsar */
+    min-height: 44px;
   }
   .mobile-page-header .back-btn {
     display: flex; align-items: center; gap: 4px;
     color: var(--accent); font-size: 0.9rem; font-weight: 500;
     background: none; border: none; cursor: pointer; padding: 4px 0;
     -webkit-tap-highlight-color: transparent;
-    z-index: 2; /* fica acima do título absoluto se houver sobreposição */
+    justify-self: start; /* fica na esquerda da coluna 1 */
   }
   .mobile-page-header .back-btn svg { width: 20px; height: 20px; }
   .mobile-page-header .page-title {
-    /* Centralização real: independente do que tem nas laterais,
-       o título sempre fica no centro EXATO do card. */
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    /* Fica na coluna 2 (auto), perfeitamente centralizada */
     font-size: 1rem; font-weight: 600;
     color: var(--text-primary);
-    pointer-events: none;
+    text-align: center;
     white-space: nowrap;
-    max-width: 60%;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
   }
   .mobile-page-header .header-action {
     background: var(--accent); color: #fff; border: none; padding: 6px 12px;
     border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    margin-left: auto;
-    z-index: 2;
+    justify-self: end; /* fica na direita da coluna 3 */
   }
 
   /* iOS SLIDE TRANSITION */
