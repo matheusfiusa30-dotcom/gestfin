@@ -350,10 +350,13 @@ table td { font-size: 0.85rem; }
   /* mobile-home follows .page active/inactive like all other pages */
   .mobile-home .mobile-header {
     background: var(--sidebar-bg);
-    padding: calc(44px + env(safe-area-inset-top, 0px)) 20px 20px;
-    border-radius: 0 0 24px 24px;
+    /* margin-top empurra o retângulo verde para DENTRO da safe-area
+       (não vaza para cima da status bar/notch). Fallback 24px para
+       celulares sem suporte a env(). */
+    margin: env(safe-area-inset-top, 24px) 0 20px 0;
+    padding: 20px;
+    border-radius: 20px;
     color: #fff;
-    margin-bottom: 20px;
   }
   .mobile-home .mobile-header .mobile-top-row { display: flex; justify-content: space-between; align-items: center; }
   .mobile-home .mobile-header h1 { font-size: 1.5rem; font-weight: 700; }
