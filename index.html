@@ -444,14 +444,16 @@ table td { font-size: 0.85rem; }
   }
   .mobile-page-header {
     display: flex !important;
-    position: sticky; top: 0; z-index: 50;
+    /* Mesmo tratamento da home: card flutuante dentro da safe-area,
+       não vaza para cima da status bar/notch. */
     background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-    padding: calc(32px + env(safe-area-inset-top, 0px)) 16px 12px;
+    border: 1px solid var(--border);
+    margin: env(safe-area-inset-top, 24px) 12px 12px 12px;
+    padding: 14px 16px;
     align-items: center;
     gap: 12px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
   .mobile-page-header .back-btn {
     display: flex; align-items: center; gap: 4px;
@@ -1664,7 +1666,25 @@ table td { font-size: 0.85rem; }
   </div>
   <div class="page-header">
     <h2>Caixa</h2>
-    <input class="form-control" type="month" id="caixa-mes" style="width:auto;" onchange="renderCaixa()">
+    <input class="form-control" type="month" id="caixa-mes" style="width:auto;" onchange="aplicarFiltroPeriodo('mes-input')">
+  </div>
+  <!-- FILTRO DE PERÍODO -->
+  <div id="caixa-filtro" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+    <select class="form-control" id="caixa-periodo" style="width:auto;min-width:160px;" onchange="aplicarFiltroPeriodo(this.value)">
+      <option value="mes-input">📅 Mês selecionado</option>
+      <option value="hoje">Hoje</option>
+      <option value="7d">Últimos 7 dias</option>
+      <option value="30d">Últimos 30 dias</option>
+      <option value="90d">Últimos 90 dias</option>
+      <option value="ano-atual">Ano atual</option>
+      <option value="custom">Personalizado…</option>
+    </select>
+    <div id="caixa-custom-range" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;">
+      <input class="form-control" type="date" id="caixa-data-ini" style="width:auto;" onchange="renderCaixa()">
+      <span style="color:var(--text-muted);font-size:0.85rem;">até</span>
+      <input class="form-control" type="date" id="caixa-data-fim" style="width:auto;" onchange="renderCaixa()">
+    </div>
+    <span id="caixa-periodo-label" style="color:var(--text-muted);font-size:0.8rem;margin-left:auto;"></span>
   </div>
   <div id="caixa-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
   <div class="stats-grid" id="caixa-stats"></div>
@@ -5233,12 +5253,74 @@ async function removerDesembolsosDoContrato(empId){
   return alvos.length;
 }
 
+// ===== FILTRO DE PERÍODO DO CAIXA =====
+// Calcula data inicial e final com base no preset selecionado
+function _getCaixaRange() {
+  const periodoEl = document.getElementById('caixa-periodo');
+  const periodo = periodoEl ? periodoEl.value : 'mes-input';
+  const customWrap = document.getElementById('caixa-custom-range');
+  const mesEl = document.getElementById('caixa-mes');
+  const dataIniEl = document.getElementById('caixa-data-ini');
+  const dataFimEl = document.getElementById('caixa-data-fim');
+  const hoje = today();
+  const hojeD = new Date(hoje + 'T00:00:00');
+  const fmt = (d) => d.toISOString().slice(0,10);
+  let ini, fim, label;
+  if (periodo === 'custom') {
+    if (customWrap) customWrap.style.display = 'flex';
+    ini = dataIniEl?.value || hoje.substring(0,8) + '01';
+    fim = dataFimEl?.value || hoje;
+    if (dataIniEl && !dataIniEl.value) dataIniEl.value = ini;
+    if (dataFimEl && !dataFimEl.value) dataFimEl.value = fim;
+    label = `${fmtData(ini)} a ${fmtData(fim)}`;
+  } else {
+    if (customWrap) customWrap.style.display = 'none';
+    if (periodo === 'hoje') {
+      ini = hoje; fim = hoje; label = 'Hoje';
+    } else if (periodo === '7d') {
+      const d = new Date(hojeD); d.setDate(d.getDate() - 6);
+      ini = fmt(d); fim = hoje; label = 'Últimos 7 dias';
+    } else if (periodo === '30d') {
+      const d = new Date(hojeD); d.setDate(d.getDate() - 29);
+      ini = fmt(d); fim = hoje; label = 'Últimos 30 dias';
+    } else if (periodo === '90d') {
+      const d = new Date(hojeD); d.setDate(d.getDate() - 89);
+      ini = fmt(d); fim = hoje; label = 'Últimos 90 dias';
+    } else if (periodo === 'ano-atual') {
+      const y = hoje.substring(0,4);
+      ini = `${y}-01-01`; fim = `${y}-12-31`; label = `Ano ${y}`;
+    } else {
+      // mes-input (default)
+      if (mesEl && !mesEl.value) mesEl.value = hoje.substring(0,7);
+      const mes = mesEl ? mesEl.value : hoje.substring(0,7);
+      const [yy, mm] = mes.split('-').map(Number);
+      const ultimoDia = new Date(yy, mm, 0).getDate();
+      ini = `${mes}-01`; fim = `${mes}-${String(ultimoDia).padStart(2,'0')}`;
+      const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      label = `${nomes[mm-1]}/${yy}`;
+    }
+  }
+  return { ini, fim, label };
+}
+
+function aplicarFiltroPeriodo(preset) {
+  const periodoEl = document.getElementById('caixa-periodo');
+  if (preset === 'mes-input') {
+    // mudança veio do input de mês — não muda o select
+  } else if (preset && periodoEl && periodoEl.value !== preset) {
+    periodoEl.value = preset;
+  }
+  renderCaixa();
+}
+
 async function renderCaixa() {
-  const mesInput=document.getElementById('caixa-mes');if(!mesInput.value)mesInput.value=today().substring(0,7);
-  const mes=mesInput.value;
+  const { ini, fim, label } = _getCaixaRange();
+  const labelEl = document.getElementById('caixa-periodo-label');
+  if (labelEl) labelEl.textContent = `Período: ${label}`;
   const [allPgs, allDs] = await Promise.all([dbSelect('pagamentos'), dbSelect('despesas')]);
-  const pgs = allPgs.filter(p=>p.data && p.data.startsWith(mes));
-  const ds = allDs.filter(d=>d.data && d.data.startsWith(mes));
+  const inRange = (data) => data && data >= ini && data <= fim;
+  const pgs = allPgs.filter(p => inRange(p.data));
+  const ds = allDs.filter(d => inRange(d.data));
 
   // Classifica cada movimento
   const pagamentos = pgs.filter(p => classifyPagamento(p)==='pagamento');
@@ -5273,13 +5355,13 @@ async function renderCaixa() {
 
   document.getElementById('caixa-stats').innerHTML=`
     <div class="stat-card ${saldoTotal>=0?'success':'danger'}"><div class="label">Saldo em Caixa</div><div class="value">${moeda(saldoTotal)}</div><div class="sub">disponível agora</div></div>
-    <div class="stat-card success"><div class="label">Pagamentos (mês)</div><div class="value">${moeda(totalPag)}</div><div class="sub">${pagamentos.length} recebidos</div></div>
-    <div class="stat-card" style="border-left:4px solid #16a34a;"><div class="label">💰 Juros Recebidos (mês)</div><div class="value" style="color:#16a34a;">${moeda(totalJurosRecebidos)}</div><div class="sub">resultado/lucro bruto</div></div>
+    <div class="stat-card success"><div class="label">Pagamentos</div><div class="value">${moeda(totalPag)}</div><div class="sub">${pagamentos.length} recebidos</div></div>
+    <div class="stat-card" style="border-left:4px solid #16a34a;"><div class="label">💰 Juros Recebidos</div><div class="value" style="color:#16a34a;">${moeda(totalJurosRecebidos)}</div><div class="sub">resultado/lucro bruto</div></div>
     <div class="stat-card" style="border-left:4px solid #6366f1;"><div class="label">🔄 Principal Recuperado</div><div class="value" style="color:#6366f1;">${moeda(totalPrincipalRecuperado)}</div><div class="sub">capital de volta</div></div>
-    <div class="stat-card" style="border-left:4px solid #1976d2;"><div class="label">Aportes (mês)</div><div class="value">${moeda(totalAp)}</div><div class="sub">${aportes.length} aporte(s)</div></div>
-    <div class="stat-card danger"><div class="label">Despesas (mês)</div><div class="value">${moeda(totalDesp)}</div><div class="sub">${despesas.length} despesa(s)</div></div>
-    <div class="stat-card" style="border-left:4px solid #f57c00;"><div class="label">Desembolsos (mês)</div><div class="value">${moeda(totalDesb)}</div><div class="sub">${desembolsos.length} empréstimo(s)</div></div>
-    <div class="stat-card ${saldoMes>=0?'success':'danger'}"><div class="label">Saldo do mês</div><div class="value">${moeda(saldoMes)}</div></div>`;
+    <div class="stat-card" style="border-left:4px solid #1976d2;"><div class="label">Aportes</div><div class="value">${moeda(totalAp)}</div><div class="sub">${aportes.length} aporte(s)</div></div>
+    <div class="stat-card danger"><div class="label">Despesas</div><div class="value">${moeda(totalDesp)}</div><div class="sub">${despesas.length} despesa(s)</div></div>
+    <div class="stat-card" style="border-left:4px solid #f57c00;"><div class="label">Desembolsos</div><div class="value">${moeda(totalDesb)}</div><div class="sub">${desembolsos.length} empréstimo(s)</div></div>
+    <div class="stat-card ${saldoMes>=0?'success':'danger'}"><div class="label">Saldo do período</div><div class="value">${moeda(saldoMes)}</div></div>`;
 
   // Badge de ação: Novo aporte + Sincronizar histórico
   const actionsEl = document.getElementById('caixa-actions');
