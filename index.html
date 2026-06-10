@@ -388,13 +388,21 @@ table td { font-size: 0.85rem; }
   .mobile-profile-dropdown .prof-btn.danger { color: var(--danger); }
   .mobile-home .mobile-header .greeting { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
   .mobile-home .mobile-header .balance-row {
-    display: flex; justify-content: space-between; margin-top: 16px; gap: 8px;
+    display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 16px; gap: 6px;
   }
   .mobile-home .mobile-header .balance-item {
-    flex: 1; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 12px; text-align: center;
+    background: rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 4px; text-align: center; min-width: 0;
   }
-  .mobile-home .mobile-header .balance-item .bl { font-size: 0.65rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
-  .mobile-home .mobile-header .balance-item .bv { font-size: 1.1rem; font-weight: 700; margin-top: 4px; }
+  .mobile-home .mobile-header .balance-item .bl {
+    font-size: 0.6rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mobile-home .mobile-header .balance-item .bv {
+    font-size: 0.78rem; font-weight: 700; margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mobile-home .mobile-header .balance-item.juros { background: rgba(255,255,255,0.22); }
+  .mobile-home .mobile-header .balance-item.juros .bv { color: #d1fae5; }
 
   .mobile-apps-grid {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 0 16px; margin-bottom: 20px;
@@ -1928,6 +1936,7 @@ table td { font-size: 0.85rem; }
       <div class="balance-item"><div class="bl">Emprestado</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
       <div class="balance-item"><div class="bl">A Receber</div><div class="bv" id="mob-receber">R$ 0</div></div>
       <div class="balance-item"><div class="bl">Recebido</div><div class="bv" id="mob-recebido">R$ 0</div></div>
+      <div class="balance-item juros"><div class="bl">Juros</div><div class="bv" id="mob-juros">R$ 0</div></div>
     </div>
   </div>
 
@@ -3196,6 +3205,18 @@ function esc(s) { const d=document.createElement('div'); d.textContent=s||''; re
 let _moedaCache = null;
 async function loadMoedaConfig() { _moedaCache = await getConfig(); }
 function moeda(v) { const c=_moedaCache||{moeda:'BRL'}, sym={BRL:'R$',USD:'US$',EUR:'€'}; return (sym[c.moeda]||'R$')+' '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function moedaCompacta(v) {
+  // Versão compacta para caber em espaços pequenos (cards mobile, etc).
+  // < 1k: R$ 999,99 | < 1M: R$ 12,3k | >= 1M: R$ 1,5M
+  const c = _moedaCache || {moeda:'BRL'};
+  const sym = {BRL:'R$',USD:'US$',EUR:'€'};
+  const prefix = sym[c.moeda] || 'R$';
+  const n = Number(v || 0);
+  const abs = Math.abs(n);
+  if (abs < 1000) return prefix + ' ' + n.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  if (abs < 1000000) return prefix + ' ' + (n/1000).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 1}) + 'k';
+  return prefix + ' ' + (n/1000000).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + 'M';
+}
 function fmtData(d) { if(!d) return '-'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
 function fmtPct(v) { return Number(v||0).toFixed(2)+'%'; }
 
@@ -3550,13 +3571,15 @@ async function renderMobileHome() {
   document.getElementById('mobile-greeting').textContent = greet;
 
   // SKELETON imediato — usuário vê estrutura antes dos dados
-  const skelValor = '<span class="skel skel-stat" style="width:80px;">.</span>';
+  const skelValor = '<span class="skel skel-stat" style="width:60px;">.</span>';
   const skelEmp = document.getElementById('mob-emprestado');
   const skelRec = document.getElementById('mob-receber');
   const skelRecd = document.getElementById('mob-recebido');
+  const skelJur = document.getElementById('mob-juros');
   if(skelEmp && !skelEmp.dataset.loaded) skelEmp.innerHTML = skelValor;
   if(skelRec && !skelRec.dataset.loaded) skelRec.innerHTML = skelValor;
   if(skelRecd && !skelRecd.dataset.loaded) skelRecd.innerHTML = skelValor;
+  if(skelJur && !skelJur.dataset.loaded) skelJur.innerHTML = skelValor;
   const skelList = '<div class="skel-row"><span class="skel skel-line">.</span><span class="skel skel-val">.</span></div>'.repeat(3);
   const ativEl = document.getElementById('mobile-atividade');
   if(ativEl && !ativEl.dataset.loaded) ativEl.innerHTML = skelList;
@@ -3574,9 +3597,22 @@ async function renderMobileHome() {
   const totalEmp = es.reduce((s,e) => s + Number(e.valor||0), 0);
   const totalReceber = ps.filter(p => p.status === 'pendente').reduce((s,p) => s + Number(p.valorTotal||0), 0);
   const totalRecebido = pgs.reduce((s,p) => s + Number(p.valor||0), 0);
-  if(skelEmp){ skelEmp.textContent = moeda(totalEmp); skelEmp.dataset.loaded = '1'; }
-  if(skelRec){ skelRec.textContent = moeda(totalReceber); skelRec.dataset.loaded = '1'; }
-  if(skelRecd){ skelRecd.textContent = moeda(totalRecebido); skelRecd.dataset.loaded = '1'; }
+  // Juros recebidos: soma valor_juros + valor_mora dos pagamentos (mesma lógica do Caixa).
+  // Fallback p/ pagamentos antigos sem breakdown: usa tipo==='juros'.
+  let totalJurosRecebidos = 0;
+  for (const p of pgs) {
+    const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
+    if (temBreakdown) {
+      totalJurosRecebidos += Number(p.valorJuros||0) + Number(p.valorMora||0);
+    } else if (p.tipo === 'juros') {
+      totalJurosRecebidos += Number(p.valor||0);
+    }
+  }
+  // Versão compacta (R$ 12,3k) p/ valores grandes — evita quebra em 4 colunas
+  if(skelEmp){ skelEmp.textContent = moedaCompacta(totalEmp); skelEmp.dataset.loaded = '1'; }
+  if(skelRec){ skelRec.textContent = moedaCompacta(totalReceber); skelRec.dataset.loaded = '1'; }
+  if(skelRecd){ skelRecd.textContent = moedaCompacta(totalRecebido); skelRecd.dataset.loaded = '1'; }
+  if(skelJur){ skelJur.textContent = moedaCompacta(totalJurosRecebidos); skelJur.dataset.loaded = '1'; }
 
   // Indexar clientes/emprestimos pra lookups O(1)
   const esMap = new Map(es.map(e => [e.id, e]));
