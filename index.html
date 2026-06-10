@@ -1673,9 +1673,6 @@ table td { font-size: 0.85rem; }
     <select class="form-control" id="caixa-periodo" style="width:auto;min-width:160px;" onchange="aplicarFiltroPeriodo(this.value)">
       <option value="mes-input">📅 Mês selecionado</option>
       <option value="hoje">Hoje</option>
-      <option value="7d">Últimos 7 dias</option>
-      <option value="30d">Últimos 30 dias</option>
-      <option value="90d">Últimos 90 dias</option>
       <option value="ano-atual">Ano atual</option>
       <option value="custom">Personalizado…</option>
     </select>
@@ -5263,8 +5260,6 @@ function _getCaixaRange() {
   const dataIniEl = document.getElementById('caixa-data-ini');
   const dataFimEl = document.getElementById('caixa-data-fim');
   const hoje = today();
-  const hojeD = new Date(hoje + 'T00:00:00');
-  const fmt = (d) => d.toISOString().slice(0,10);
   let ini, fim, label;
   if (periodo === 'custom') {
     if (customWrap) customWrap.style.display = 'flex';
@@ -5277,15 +5272,6 @@ function _getCaixaRange() {
     if (customWrap) customWrap.style.display = 'none';
     if (periodo === 'hoje') {
       ini = hoje; fim = hoje; label = 'Hoje';
-    } else if (periodo === '7d') {
-      const d = new Date(hojeD); d.setDate(d.getDate() - 6);
-      ini = fmt(d); fim = hoje; label = 'Últimos 7 dias';
-    } else if (periodo === '30d') {
-      const d = new Date(hojeD); d.setDate(d.getDate() - 29);
-      ini = fmt(d); fim = hoje; label = 'Últimos 30 dias';
-    } else if (periodo === '90d') {
-      const d = new Date(hojeD); d.setDate(d.getDate() - 89);
-      ini = fmt(d); fim = hoje; label = 'Últimos 90 dias';
     } else if (periodo === 'ano-atual') {
       const y = hoje.substring(0,4);
       ini = `${y}-01-01`; fim = `${y}-12-31`; label = `Ano ${y}`;
