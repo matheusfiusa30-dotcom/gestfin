@@ -1933,9 +1933,9 @@ table td { font-size: 0.85rem; }
     </div>
     <div class="greeting" id="mobile-greeting">Bom dia!</div>
     <div class="balance-row" id="mobile-balances">
-      <div class="balance-item"><div class="bl">Emprestado</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
-      <div class="balance-item"><div class="bl">A Receber</div><div class="bv" id="mob-receber">R$ 0</div></div>
-      <div class="balance-item"><div class="bl">Recebido</div><div class="bv" id="mob-recebido">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">Emprestado (mês)</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">A Receber (mês)</div><div class="bv" id="mob-receber">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">Recebido (mês)</div><div class="bv" id="mob-recebido">R$ 0</div></div>
       <div class="balance-item juros"><div class="bl">Juros (mês)</div><div class="bv" id="mob-juros">R$ 0</div></div>
     </div>
   </div>
@@ -3593,17 +3593,30 @@ async function renderMobileHome() {
   ]);
   const hoje = today();
 
-  // Balances
-  const totalEmp = es.reduce((s,e) => s + Number(e.valor||0), 0);
-  const totalReceber = ps.filter(p => p.status === 'pendente').reduce((s,p) => s + Number(p.valorTotal||0), 0);
-  const totalRecebido = pgs.reduce((s,p) => s + Number(p.valor||0), 0);
-  // Juros recebidos APENAS DO MÊS CORRENTE — métrica do mês, não acumulado.
-  // Soma valor_juros + valor_mora dos pagamentos no mês atual (mesma lógica do Caixa).
-  // Fallback p/ pagamentos antigos sem breakdown: usa tipo==='juros'.
+  // Balances — TODOS LIMITADOS AO MÊS CORRENTE (primeiro ao último dia).
   const mesAtual = hoje.substring(0, 7); // 'YYYY-MM'
+  const noMes = (data) => data && data.startsWith(mesAtual);
+
+  // Emprestado: soma dos contratos criados no mês (e.dataInicio)
+  const totalEmp = es
+    .filter(e => noMes(e.dataInicio))
+    .reduce((s,e) => s + Number(e.valor||0), 0);
+
+  // A Receber: parcelas pendentes com vencimento dentro do mês
+  const totalReceber = ps
+    .filter(p => p.status === 'pendente' && noMes(p.dataVencimento))
+    .reduce((s,p) => s + Number(p.valorTotal||0), 0);
+
+  // Recebido: pagamentos efetivados no mês
+  const totalRecebido = pgs
+    .filter(p => noMes(p.data))
+    .reduce((s,p) => s + Number(p.valor||0), 0);
+
+  // Juros recebidos no mês (valor_juros + valor_mora dos pagamentos do mês)
+  // Fallback p/ pagamentos antigos sem breakdown: usa tipo==='juros'.
   let totalJurosRecebidos = 0;
   for (const p of pgs) {
-    if (!p.data || !p.data.startsWith(mesAtual)) continue; // só mês corrente
+    if (!noMes(p.data)) continue;
     const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
     if (temBreakdown) {
       totalJurosRecebidos += Number(p.valorJuros||0) + Number(p.valorMora||0);
