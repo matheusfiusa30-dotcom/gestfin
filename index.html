@@ -444,40 +444,55 @@ table td { font-size: 0.85rem; }
     display: none !important; /* hide desktop headers on mobile */
   }
   .mobile-page-header {
-    /* Grid 3 colunas: lateral fixa (60px) | título flexível | lateral fixa (60px)
-       Garantia visual: colunas laterais têm largura IDÊNTICA e fixa,
-       título centralizado independente do que está nas laterais. */
-    display: grid !important;
-    grid-template-columns: 60px 1fr 60px;
+    /* Centralização à prova de bala: container relativo, título com
+       position:absolute e left:50% + translateX(-50%) ocupa o centro
+       MATEMÁTICO do card, sem depender de nada das laterais. */
+    display: block !important;
+    position: relative;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     margin: env(safe-area-inset-top, 24px) 12px 12px 12px;
-    padding: 14px 12px;
-    align-items: center;
+    padding: 0;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    min-height: 44px;
+    min-height: 52px;
   }
   .mobile-page-header .back-btn {
-    display: flex; align-items: center; justify-content: flex-start; gap: 4px;
-    color: var(--accent); font-size: 0.9rem; font-weight: 500;
-    background: none; border: none; cursor: pointer; padding: 4px 0;
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px;
+    color: var(--accent);
+    background: none; border: none; cursor: pointer; padding: 0;
     -webkit-tap-highlight-color: transparent;
+    z-index: 2;
   }
-  .mobile-page-header .back-btn svg { width: 22px; height: 22px; }
+  .mobile-page-header .back-btn svg { width: 24px; height: 24px; }
   .mobile-page-header .page-title {
-    /* Coluna 2 (1fr): título com text-align center fica no meio EXATO */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     font-size: 1rem; font-weight: 600;
     color: var(--text-primary);
     text-align: center;
     white-space: nowrap;
+    max-width: calc(100% - 110px); /* não invade os botões laterais */
     overflow: hidden;
     text-overflow: ellipsis;
+    margin: 0;
+    pointer-events: none;
   }
   .mobile-page-header .header-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     background: var(--accent); color: #fff; border: none; padding: 6px 12px;
     border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    justify-self: end;
+    z-index: 2;
   }
 
   /* iOS SLIDE TRANSITION */
