@@ -447,6 +447,7 @@ table td { font-size: 0.85rem; }
     display: flex !important;
     /* Mesmo tratamento da home: card flutuante dentro da safe-area,
        não vaza para cima da status bar/notch. */
+    position: relative; /* âncora para o page-title absoluto */
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     margin: env(safe-area-inset-top, 24px) 12px 12px 12px;
@@ -455,25 +456,37 @@ table td { font-size: 0.85rem; }
     gap: 12px;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    min-height: 44px; /* garante altura para o título absoluto não colapsar */
   }
   .mobile-page-header .back-btn {
     display: flex; align-items: center; gap: 4px;
     color: var(--accent); font-size: 0.9rem; font-weight: 500;
     background: none; border: none; cursor: pointer; padding: 4px 0;
     -webkit-tap-highlight-color: transparent;
+    z-index: 2; /* fica acima do título absoluto se houver sobreposição */
   }
   .mobile-page-header .back-btn svg { width: 20px; height: 20px; }
   .mobile-page-header .page-title {
-    flex: 1; text-align: center; font-size: 1rem; font-weight: 600;
-    color: var(--text-primary); margin-right: 28px; /* compensate back button */
+    /* Centralização real: independente do que tem nas laterais,
+       o título sempre fica no centro EXATO do card. */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem; font-weight: 600;
+    color: var(--text-primary);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .mobile-page-header .header-action {
     background: var(--accent); color: #fff; border: none; padding: 6px 12px;
     border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    margin-right: 0; margin-left: auto;
+    margin-left: auto;
+    z-index: 2;
   }
-  /* Fix: compensate title when action button exists */
-  .mobile-page-header .page-title.has-action { margin-right: 0; }
 
   /* iOS SLIDE TRANSITION */
   .page {
