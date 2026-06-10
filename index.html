@@ -1936,7 +1936,7 @@ table td { font-size: 0.85rem; }
       <div class="balance-item"><div class="bl">Emprestado</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
       <div class="balance-item"><div class="bl">A Receber</div><div class="bv" id="mob-receber">R$ 0</div></div>
       <div class="balance-item"><div class="bl">Recebido</div><div class="bv" id="mob-recebido">R$ 0</div></div>
-      <div class="balance-item juros"><div class="bl">Juros</div><div class="bv" id="mob-juros">R$ 0</div></div>
+      <div class="balance-item juros"><div class="bl">Juros (mês)</div><div class="bv" id="mob-juros">R$ 0</div></div>
     </div>
   </div>
 
@@ -3597,10 +3597,13 @@ async function renderMobileHome() {
   const totalEmp = es.reduce((s,e) => s + Number(e.valor||0), 0);
   const totalReceber = ps.filter(p => p.status === 'pendente').reduce((s,p) => s + Number(p.valorTotal||0), 0);
   const totalRecebido = pgs.reduce((s,p) => s + Number(p.valor||0), 0);
-  // Juros recebidos: soma valor_juros + valor_mora dos pagamentos (mesma lógica do Caixa).
+  // Juros recebidos APENAS DO MÊS CORRENTE — métrica do mês, não acumulado.
+  // Soma valor_juros + valor_mora dos pagamentos no mês atual (mesma lógica do Caixa).
   // Fallback p/ pagamentos antigos sem breakdown: usa tipo==='juros'.
+  const mesAtual = hoje.substring(0, 7); // 'YYYY-MM'
   let totalJurosRecebidos = 0;
   for (const p of pgs) {
+    if (!p.data || !p.data.startsWith(mesAtual)) continue; // só mês corrente
     const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
     if (temBreakdown) {
       totalJurosRecebidos += Number(p.valorJuros||0) + Number(p.valorMora||0);
