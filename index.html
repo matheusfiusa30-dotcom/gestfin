@@ -352,9 +352,10 @@ table td { font-size: 0.85rem; }
     background: var(--sidebar-bg);
     /* margin-top empurra o retângulo verde para DENTRO da safe-area
        (não vaza para cima da status bar/notch). Fallback 24px para
-       celulares sem suporte a env(). */
-    margin: env(safe-area-inset-top, 24px) 0 20px 0;
-    padding: 20px;
+       celulares sem suporte a env(). Margens laterais deixam o card
+       no "cantinho" ao invés de ocupar a tela toda. */
+    margin: env(safe-area-inset-top, 24px) 12px 20px 12px;
+    padding: 18px 18px;
     border-radius: 20px;
     color: #fff;
   }
