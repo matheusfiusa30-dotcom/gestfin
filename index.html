@@ -444,42 +444,40 @@ table td { font-size: 0.85rem; }
     display: none !important; /* hide desktop headers on mobile */
   }
   .mobile-page-header {
-    /* Grid 3 colunas iguais: back-btn (esquerda) | título (centro) | ação/spacer (direita)
-       Garante centralização perfeita independente do que tem em cada lado. */
+    /* Grid 3 colunas: lateral fixa (60px) | título flexível | lateral fixa (60px)
+       Garantia visual: colunas laterais têm largura IDÊNTICA e fixa,
+       título centralizado independente do que está nas laterais. */
     display: grid !important;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: 60px 1fr 60px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     margin: env(safe-area-inset-top, 24px) 12px 12px 12px;
-    padding: 14px 16px;
+    padding: 14px 12px;
     align-items: center;
-    gap: 8px;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     min-height: 44px;
   }
   .mobile-page-header .back-btn {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; justify-content: flex-start; gap: 4px;
     color: var(--accent); font-size: 0.9rem; font-weight: 500;
     background: none; border: none; cursor: pointer; padding: 4px 0;
     -webkit-tap-highlight-color: transparent;
-    justify-self: start; /* fica na esquerda da coluna 1 */
   }
-  .mobile-page-header .back-btn svg { width: 20px; height: 20px; }
+  .mobile-page-header .back-btn svg { width: 22px; height: 22px; }
   .mobile-page-header .page-title {
-    /* Fica na coluna 2 (auto), perfeitamente centralizada */
+    /* Coluna 2 (1fr): título com text-align center fica no meio EXATO */
     font-size: 1rem; font-weight: 600;
     color: var(--text-primary);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
   }
   .mobile-page-header .header-action {
     background: var(--accent); color: #fff; border: none; padding: 6px 12px;
     border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    justify-self: end; /* fica na direita da coluna 3 */
+    justify-self: end;
   }
 
   /* iOS SLIDE TRANSITION */
