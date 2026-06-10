@@ -3537,18 +3537,22 @@ async function renderMobileHome() {
   const clMap = new Map(cl.map(c => [c.id, c]));
 
   // Atividade recente
-  const recentes = pgs.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+  // Atividade recente: somente recebimentos do dia atual, com link para o contrato
+  const recentes = pgs.filter(pg => pg.data === hoje)
+    .sort((a,b) => b.data.localeCompare(a.data));
   if(ativEl){
     ativEl.dataset.loaded = '1';
     ativEl.innerHTML = recentes.length ?
       recentes.map(pg => {
         const e = esMap.get(pg.emprestimoId);
         const c = e ? clMap.get(e.pessoaId) : null;
-        return `<div class="mobile-quick-item">
-          <div class="mq-left"><div class="mq-dot" style="background:var(--success);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">${fmtData(pg.data)}</div></div></div>
+        const eid = pg.emprestimoId || '';
+        const clickAttr = eid ? `onclick="verContrato('${eid}')" style="cursor:pointer;"` : '';
+        return `<div class="mobile-quick-item" ${clickAttr}>
+          <div class="mq-left"><div class="mq-dot" style="background:var(--success);"></div><div><div class="mq-name">${c ? esc(c.nome) : '-'}</div><div class="mq-sub">${fmtData(pg.data)}${eid ? ' · Ver contrato →' : ''}</div></div></div>
           <div class="mq-value" style="color:var(--success);">${moeda(pg.valor)}</div>
         </div>`;
-      }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade</div>';
+      }).join('') : '<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:0.85rem;">Nenhuma atividade hoje</div>';
   }
 
   // Calendário em background — não bloqueia retorno
