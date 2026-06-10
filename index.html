@@ -3593,37 +3593,82 @@ async function renderMobileHome() {
   ]);
   const hoje = today();
 
-  // Balances — TODOS LIMITADOS AO MÊS CORRENTE (primeiro ao último dia).
+  // ============================================================
+  // TOTALIZADORES — AUDITADOS
+  // ============================================================
+  // Regras:
+  // 1. "Em Empréstimo" — TODO O PRINCIPAL EM ABERTO, sem filtro de mês.
+  //    Soma o principal das parcelas PENDENTES de contratos ATIVOS/ATRASADOS
+  //    (exclui quitados e renegociados — esse dinheiro voltou ou foi rolado).
+  //    Subtrai amortizações parciais (valorPago) p/ refletir o saldo real.
+  // 2. "A Receber (mês)" — parcelas com vencimento no mês corrente, pendentes,
+  //    de contratos ativos/atrasados, considerando pagamentos parciais.
+  // 3. "Recebido (mês)" — só pagamentos REAIS de parcelas (exclui aportes
+  //    de capital, que não são receita de cliente).
+  // 4. "Juros (mês)" — juros + mora dos pagamentos do mês (já excluindo aportes).
+
   const mesAtual = hoje.substring(0, 7); // 'YYYY-MM'
   const noMes = (data) => data && data.startsWith(mesAtual);
 
-  // "Na Rua" = dinheiro emprestado AINDA EM ABERTO (independente de mês).
-  // Soma do PRINCIPAL ainda pendente em todos os contratos não quitados.
-  // Usa parcelas pendentes (mais preciso que somar valor dos contratos ativos,
-  // pois desconta automaticamente o que já foi amortizado).
-  const totalEmp = ps
-    .filter(p => p.status === 'pendente')
-    .reduce((s,p) => s + Number(p.valorPrincipal||0), 0);
+  // Lookup O(1) do status do empréstimo
+  const empStatusMap = new Map(es.map(e => [e.id, e.status]));
+  const contratoAtivo = (emprestimoId) => {
+    const s = empStatusMap.get(emprestimoId);
+    return s === 'ativo' || s === 'atrasado'; // exclui quitado, renegociado, null
+  };
 
-  // A Receber: parcelas pendentes com vencimento dentro do mês
+  // Helper: principal real da parcela (usa valorPrincipal; fallback p/ dados antigos)
+  const principalDaParcela = (p) => {
+    const principal = Number(p.valorPrincipal || 0);
+    if (principal > 0) return principal;
+    // Fallback p/ parcelas antigas sem breakdown: principal = total - juros
+    return Math.max(0, Number(p.valorTotal || 0) - Number(p.valorJuros || 0));
+  };
+
+  // 1. EM EMPRÉSTIMO — principal em aberto, descontando o que já foi pago.
+  // Não tem filtro de mês: é a posição de capital na rua AGORA.
+  let totalEmp = 0;
+  for (const p of ps) {
+    if (p.status !== 'pendente') continue;
+    if (!contratoAtivo(p.emprestimoId)) continue;
+    const principal = principalDaParcela(p);
+    const valorTotal = Number(p.valorTotal || 0);
+    const valorPago = Number(p.valorPago || 0);
+    // Proporção do principal que ainda falta receber.
+    // Ex: parcela 110 (100 principal + 10 juros), 55 pago → 50 principal restante
+    if (valorTotal > 0 && valorPago > 0) {
+      const principalRestante = principal * (1 - Math.min(1, valorPago / valorTotal));
+      totalEmp += principalRestante;
+    } else {
+      totalEmp += principal;
+    }
+  }
+
+  // 2. A RECEBER (mês) — total restante (não pago) das parcelas do mês.
+  // Contratos quitados/renegociados não entram. Pagamentos parciais descontados.
   const totalReceber = ps
-    .filter(p => p.status === 'pendente' && noMes(p.dataVencimento))
-    .reduce((s,p) => s + Number(p.valorTotal||0), 0);
+    .filter(p => p.status === 'pendente' && noMes(p.dataVencimento) && contratoAtivo(p.emprestimoId))
+    .reduce((s, p) => {
+      const total = Number(p.valorTotal || 0);
+      const pago = Number(p.valorPago || 0);
+      return s + Math.max(0, total - pago);
+    }, 0);
 
-  // Recebido: pagamentos efetivados no mês
+  // 3. RECEBIDO (mês) — só pagamentos reais de parcelas (aportes excluídos).
   const totalRecebido = pgs
-    .filter(p => noMes(p.data))
-    .reduce((s,p) => s + Number(p.valor||0), 0);
+    .filter(p => noMes(p.data) && p.tipo !== 'aporte' && p.parcelaId)
+    .reduce((s, p) => s + Number(p.valor || 0), 0);
 
-  // Juros recebidos no mês (valor_juros + valor_mora dos pagamentos do mês)
-  // Fallback p/ pagamentos antigos sem breakdown: usa tipo==='juros'.
+  // 4. JUROS (mês) — juros + mora recebidos no mês (de pagamentos reais).
   let totalJurosRecebidos = 0;
   for (const p of pgs) {
     if (!noMes(p.data)) continue;
+    if (p.tipo === 'aporte' || !p.parcelaId) continue; // exclui aportes
     const temBreakdown = p.valorJuros != null || p.valorPrincipal != null || p.valorMora != null;
     if (temBreakdown) {
       totalJurosRecebidos += Number(p.valorJuros||0) + Number(p.valorMora||0);
     } else if (p.tipo === 'juros') {
+      // Fallback p/ pagamentos antigos sem breakdown
       totalJurosRecebidos += Number(p.valor||0);
     }
   }
