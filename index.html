@@ -1933,7 +1933,7 @@ table td { font-size: 0.85rem; }
     </div>
     <div class="greeting" id="mobile-greeting">Bom dia!</div>
     <div class="balance-row" id="mobile-balances">
-      <div class="balance-item"><div class="bl">Emprestado (mês)</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">Na Rua</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
       <div class="balance-item"><div class="bl">A Receber (mês)</div><div class="bv" id="mob-receber">R$ 0</div></div>
       <div class="balance-item"><div class="bl">Recebido (mês)</div><div class="bv" id="mob-recebido">R$ 0</div></div>
       <div class="balance-item juros"><div class="bl">Juros (mês)</div><div class="bv" id="mob-juros">R$ 0</div></div>
@@ -3597,10 +3597,13 @@ async function renderMobileHome() {
   const mesAtual = hoje.substring(0, 7); // 'YYYY-MM'
   const noMes = (data) => data && data.startsWith(mesAtual);
 
-  // Emprestado: soma dos contratos criados no mês (e.dataInicio)
-  const totalEmp = es
-    .filter(e => noMes(e.dataInicio))
-    .reduce((s,e) => s + Number(e.valor||0), 0);
+  // "Na Rua" = dinheiro emprestado AINDA EM ABERTO (independente de mês).
+  // Soma do PRINCIPAL ainda pendente em todos os contratos não quitados.
+  // Usa parcelas pendentes (mais preciso que somar valor dos contratos ativos,
+  // pois desconta automaticamente o que já foi amortizado).
+  const totalEmp = ps
+    .filter(p => p.status === 'pendente')
+    .reduce((s,p) => s + Number(p.valorPrincipal||0), 0);
 
   // A Receber: parcelas pendentes com vencimento dentro do mês
   const totalReceber = ps
