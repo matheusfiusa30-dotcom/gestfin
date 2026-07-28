@@ -388,17 +388,17 @@ table td { font-size: 0.85rem; }
   .mobile-profile-dropdown .prof-btn.danger { color: var(--danger); }
   .mobile-home .mobile-header .greeting { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
   .mobile-home .mobile-header .balance-row {
-    display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 16px; gap: 6px;
+    display: grid; grid-template-columns: repeat(2, 1fr); margin-top: 16px; gap: 10px;
   }
   .mobile-home .mobile-header .balance-item {
-    background: rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 4px; text-align: center; min-width: 0;
+    background: rgba(255,255,255,0.15); border-radius: 12px; padding: 12px; text-align: center; min-width: 0;
   }
   .mobile-home .mobile-header .balance-item .bl {
-    font-size: 0.6rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.3px;
+    font-size: 0.68rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .mobile-home .mobile-header .balance-item .bv {
-    font-size: 0.78rem; font-weight: 700; margin-top: 3px;
+    font-size: 1.05rem; font-weight: 700; margin-top: 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .mobile-home .mobile-header .balance-item.juros { background: rgba(255,255,255,0.22); }
@@ -1933,9 +1933,7 @@ table td { font-size: 0.85rem; }
     </div>
     <div class="greeting" id="mobile-greeting">Bom dia!</div>
     <div class="balance-row" id="mobile-balances">
-      <div class="balance-item"><div class="bl">Em Empréstimo</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
-      <div class="balance-item"><div class="bl">A Receber (mês)</div><div class="bv" id="mob-receber">R$ 0</div></div>
-      <div class="balance-item"><div class="bl">Recebido (mês)</div><div class="bv" id="mob-recebido">R$ 0</div></div>
+      <div class="balance-item"><div class="bl">Valor Emprestado</div><div class="bv" id="mob-emprestado">R$ 0</div></div>
       <div class="balance-item juros"><div class="bl">Juros (mês)</div><div class="bv" id="mob-juros">R$ 0</div></div>
     </div>
   </div>
@@ -3571,14 +3569,10 @@ async function renderMobileHome() {
   document.getElementById('mobile-greeting').textContent = greet;
 
   // SKELETON imediato — usuário vê estrutura antes dos dados
-  const skelValor = '<span class="skel skel-stat" style="width:60px;">.</span>';
+  const skelValor = '<span class="skel skel-stat" style="width:80px;">.</span>';
   const skelEmp = document.getElementById('mob-emprestado');
-  const skelRec = document.getElementById('mob-receber');
-  const skelRecd = document.getElementById('mob-recebido');
   const skelJur = document.getElementById('mob-juros');
   if(skelEmp && !skelEmp.dataset.loaded) skelEmp.innerHTML = skelValor;
-  if(skelRec && !skelRec.dataset.loaded) skelRec.innerHTML = skelValor;
-  if(skelRecd && !skelRecd.dataset.loaded) skelRecd.innerHTML = skelValor;
   if(skelJur && !skelJur.dataset.loaded) skelJur.innerHTML = skelValor;
   const skelList = '<div class="skel-row"><span class="skel skel-line">.</span><span class="skel skel-val">.</span></div>'.repeat(3);
   const ativEl = document.getElementById('mobile-atividade');
@@ -3594,24 +3588,20 @@ async function renderMobileHome() {
   const hoje = today();
 
   // ============================================================
-  // TOTALIZADORES — AUDITADOS (v2)
+  // TOTALIZADORES — AUDITADOS (v3)
   // ============================================================
   // FONTES DE VERDADE:
   //  - emprestimos: status ('ativo'|'atrasado'|'quitado'|'renegociado'|null)
-  //  - parcelas: status ('pendente'|'paga'), valorTotal, valorPago, valorPrincipal, valorJuros
-  //  - pagamentos: data, valor, parcelaId, emprestimoId, tipo,
-  //                valorPrincipal, valorJuros, valorMora (novos campos)
+  //  - parcelas: status ('pendente'|'paga'), valorTotal, valorPago
+  //  - pagamentos: data, valor, parcelaId, tipo, valorJuros, valorMora
   //
   // REGRAS:
-  //  1. "Em Empréstimo" = PRINCIPAL em aberto (não tem filtro de mês — é
-  //     a posição de capital na rua agora). Conta só parcelas pendentes
-  //     de contratos ativos/atrasados, descontando amortizações parciais.
-  //  2. "A Receber (mês)" = total a receber das parcelas com vencimento
-  //     no mês corrente, descontando pagamentos parciais.
-  //  3. "Recebido (mês)" = pagamentos efetivados no mês (exclui aportes
-  //     de capital — esses não são receita de cliente).
-  //  4. "Juros (mês)" = juros + mora recebidos no mês (de pagamentos
-  //     reais, não de aportes).
+  //  1. "Valor Emprestado" = TOTAL a receber (principal + juros ainda
+  //     pendentes) dos contratos ativos/atrasados. Sem filtro de mês —
+  //     é a posição TOTAL da carteira. Sum of (valorTotal - valorPago)
+  //     das parcelas pendentes de contratos ativos.
+  //  2. "Juros (mês)" = juros + mora recebidos no mês (de pagamentos
+  //     reais de parcelas, não de aportes).
 
   // Mês corrente em horário LOCAL (não UTC) — evita bug de virada de
   // dia em fusos negativos como o Brasil.
@@ -3634,44 +3624,15 @@ async function renderMobileHome() {
     return Number.isFinite(n) && n > 0 ? n : 0;
   };
 
-  // Helper: principal real da parcela (usa valorPrincipal; fallback p/ dados antigos)
-  const principalDaParcela = (p) => {
-    const principal = num(p.valorPrincipal);
-    if (principal > 0) return principal;
-    // Fallback p/ parcelas antigas sem breakdown: principal = total - juros
-    return Math.max(0, num(p.valorTotal) - num(p.valorJuros));
-  };
-
-  // 1. EM EMPRÉSTIMO — principal em aberto, descontando o que já foi pago.
-  let totalEmp = 0;
-  for (const p of ps) {
-    if (p.status !== 'pendente') continue;
-    if (!contratoAtivo(p.emprestimoId)) continue;
-    const principal = principalDaParcela(p);
-    const valorTotal = num(p.valorTotal);
-    const valorPago = num(p.valorPago);
-    if (valorTotal > 0 && valorPago > 0) {
-      // Proporção do principal já amortizada (mora primeiro, depois juros,
-      // depois principal — mas como aproximação proporcional, fica próximo).
-      const principalRestante = principal * (1 - Math.min(1, valorPago / valorTotal));
-      totalEmp += principalRestante;
-    } else {
-      totalEmp += principal;
-    }
-  }
-
-  // 2. A RECEBER (mês) — total restante (não pago) das parcelas do mês.
-  const totalReceber = ps
-    .filter(p => p.status === 'pendente' && noMes(p.dataVencimento) && contratoAtivo(p.emprestimoId))
+  // 1. VALOR EMPRESTADO — total ainda a receber (principal + juros)
+  // das parcelas pendentes de contratos ativos/atrasados. Desconta
+  // pagamentos parciais (valorPago) para refletir o saldo real.
+  // Sem filtro de mês: é a posição TOTAL da carteira.
+  const totalEmp = ps
+    .filter(p => p.status === 'pendente' && contratoAtivo(p.emprestimoId))
     .reduce((s, p) => s + Math.max(0, num(p.valorTotal) - num(p.valorPago)), 0);
 
-  // 3. RECEBIDO (mês) — só pagamentos reais (exclui aportes).
-  // Critério: tem parcelaId E tipo !== 'aporte'. Aportes vêm sem parcelaId.
-  const totalRecebido = pgs
-    .filter(p => noMes(p.data) && p.tipo !== 'aporte' && p.parcelaId)
-    .reduce((s, p) => s + num(p.valor), 0);
-
-  // 4. JUROS (mês) — juros + mora recebidos no mês (de pagamentos reais).
+  // 2. JUROS (mês) — juros + mora recebidos no mês (de pagamentos reais).
   let totalJurosRecebidos = 0;
   for (const p of pgs) {
     if (!noMes(p.data)) continue;
@@ -3704,16 +3665,12 @@ async function renderMobileHome() {
     console.log('  reais:', pgs.filter(p => p.tipo!=='aporte' && p.parcelaId).length);
     console.log('  do mês:', pgs.filter(p => noMes(p.data)).length);
     console.log('---');
-    console.log('1. Em Empréstimo:', moeda(totalEmp));
-    console.log('2. A Receber (mês):', moeda(totalReceber));
-    console.log('3. Recebido (mês):', moeda(totalRecebido));
-    console.log('4. Juros (mês):', moeda(totalJurosRecebidos));
+    console.log('1. Valor Emprestado:', moeda(totalEmp));
+    console.log('2. Juros (mês):', moeda(totalJurosRecebidos));
     console.groupEnd();
   }
-  // Versão compacta (R$ 12,3k) p/ valores grandes — evita quebra em 4 colunas
+  // Formato compacto (R$ 12,3k) p/ valores grandes — evita quebra em telas pequenas
   if(skelEmp){ skelEmp.textContent = moedaCompacta(totalEmp); skelEmp.dataset.loaded = '1'; }
-  if(skelRec){ skelRec.textContent = moedaCompacta(totalReceber); skelRec.dataset.loaded = '1'; }
-  if(skelRecd){ skelRecd.textContent = moedaCompacta(totalRecebido); skelRecd.dataset.loaded = '1'; }
   if(skelJur){ skelJur.textContent = moedaCompacta(totalJurosRecebidos); skelJur.dataset.loaded = '1'; }
 
   // Indexar clientes/emprestimos pra lookups O(1)
